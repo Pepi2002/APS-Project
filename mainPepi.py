@@ -10,7 +10,7 @@ from ActorsPepi.Verifier import Verifier
 from BlockchainPepi.DIDRegistry import DIDRegistry
 from BlockchainPepi.RevocationRegistry import RevocationRegistry
 # Importa la nuova classe Blockchain (NON SimulatedBlockchain)
-from Blockchain import Blockchain # O il percorso corretto al tuo file Blockchain.py
+from BlockchainRaff.Blockchain import Blockchain # O il percorso corretto al tuo file Blockchain.py
 from OtherTechnologiesPepi.MerkleTree import MerkleTree
 from Utils.CredentialUtils import CredentialUtils
 
