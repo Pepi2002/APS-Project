@@ -2,11 +2,10 @@ import hashlib
 import json
 import uuid
 from datetime import datetime
-from typing import List, Dict # Import per i tipi di dato
+from typing import Dict # Import per i tipi di dato
 
 # Assicurati che queste classi siano importate o definite sopra
-from Block import Block
-from Blockchain import Blockchain
+from BlockchainRaff.Blockchain import Blockchain
 
 class DIDRegistry:
     def __init__(self, blockchain: 'Blockchain'): # Specifichiamo il tipo di blockchain

@@ -1,7 +1,7 @@
 import time
 from typing import List, Dict
 
-from Block import Block
+from BlockchainRaff.Block import Block
 
 
 class Blockchain:

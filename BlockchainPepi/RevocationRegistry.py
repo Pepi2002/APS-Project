@@ -1,11 +1,9 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import List, Dict, Set # Import per i tipi di dato
 
 # Assicurati che queste classi siano importate o definite sopra
-from Block import Block
-from Blockchain import Blockchain
+from BlockchainRaff.Blockchain import Blockchain
 
 
 class RevocationRegistry:
