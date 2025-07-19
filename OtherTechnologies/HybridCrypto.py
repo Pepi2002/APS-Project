@@ -9,13 +9,11 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 
 
 class HybridCrypto:
-    """Implementazione della crittografia ibrida RSA-OAEP + AES-CTR"""
 
     def __init__(self):
         self.csprng = CSPRNGGenerator()
 
     def encrypt_hybrid(self, data: bytes, recipient_public_key: RSAPublicKey) -> Dict[str, str]:
-        """Cifratura ibrida: AES-CTR per i dati + RSA-OAEP per la chiave"""
         # Genera chiave simmetrica temporanea
         session_key = self.csprng.generate_session_key()
 
