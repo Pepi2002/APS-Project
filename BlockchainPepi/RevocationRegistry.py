@@ -2,21 +2,14 @@ import hashlib
 import json
 from datetime import datetime
 
-# Assicurati che queste classi siano importate o definite sopra
 from BlockchainRaff.Blockchain import Blockchain
 
 
 class RevocationRegistry:
-    def __init__(self, blockchain: 'Blockchain'): # Specifichiamo il tipo di blockchain
+    def __init__(self, blockchain: 'Blockchain'):
         self.blockchain = blockchain
-        # Non è più necessario self.revoked_credentials in memoria,
-        # lo stato delle revoche sarà letto dalla blockchain al bisogno.
-        # Oppure, per performance, potresti ricaricarlo all'avvio da blockchain.
 
     def revoke_credential(self, credential_id: str) -> bool:
-        # In una vera blockchain, non puoi verificare se è già revocata prima di inviare la transazione
-        # È il contratto intelligente che gestisce lo stato on-chain.
-        # Per la simulazione, possiamo fare una verifica prima di aggiungere la transazione.
         if self.is_revoked(credential_id):
             print(f"⚠️ Credenziale {credential_id} già revocata (verificato tramite blockchain simulata).")
             return False

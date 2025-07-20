@@ -1,17 +1,25 @@
 import json
+import uuid
+from datetime import datetime
+from typing import Dict
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
+from BlockchainPepi.DIDRegistry import DIDRegistry
+from BlockchainPepi.RevocationRegistry import RevocationRegistry
 from OtherTechnologiesPepi.HybridCrypto import HybridCrypto
 
 
 class Actor:
-    def __init__(self):
+    def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
         self.private_key = self.generate_private_key()
         self.public_key = self.private_key.public_key()
-        self.did = None
+        self.did = self.generate_did()
+        self.did_document = self.generate_did_document()
         self.hybrid_crypto = HybridCrypto()
+        self.did_registry = did_registry
+        self.revocation_registry = revocation_registry
 
     @staticmethod
     def generate_private_key():
@@ -42,15 +50,33 @@ class Actor:
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
 
-    def generate_did(self, did_registry):
-        public_key = self.get_public_key_pem()
-        self.did = did_registry.create_did(public_key)
-        return self.did
+    @staticmethod
+    def generate_did():
+        return f"did:{uuid.uuid4()}"
+
+
+    def generate_did_document(self) -> Dict:
+        pem_lines = self.get_public_key_pem().decode('utf-8').splitlines()
+        return {
+            "@context": ["https://www.w3.org/ns/did/v1"],
+            "id": self.did,
+            "verificationMethod": [{
+                "id": f"{self.did}#key-1",
+                "type": "RsaVerificationKey2018",
+                "controller": self.did,
+                "publicKeyPem": pem_lines,
+            }],
+            "authentication": [f"{self.did}#key-1"],
+            "assertionMethod": [f"{self.did}#key-1"],
+            "created": datetime.now().isoformat(),
+            "updated": datetime.now().isoformat(),
+        }
 
     def get_did(self) -> str:
-        if self.did is None:
-            raise ValueError("DID non ancora generato.")
         return self.did
+
+    def get_did_document(self) -> Dict:
+        return self.did_document
 
     def sign(self, message: bytes) -> bytes:
         """Firma un messaggio raw in bytes."""

@@ -71,6 +71,7 @@ class CredentialUtils:
     def generate_verifiable_credential(
             issuer_did: str,
             holder_did: str,
+            accreditation_did: str,
             private_key: str,
             merkle_root: str,
             exp_days: int = 365
@@ -78,6 +79,7 @@ class CredentialUtils:
         """
         Genera una Credenziale Accademica Verificabile (VC) firmata con RS256.
 
+        :param accreditation_did:
         :param issuer_did: DID dell'università emittente (issuer)
         :param holder_did: DID del titolare della credenziale (studente)
         :param private_key: chiave privata dell'emittente per firmare il JWT
@@ -93,6 +95,7 @@ class CredentialUtils:
             "jti": credential_id,
             "iss": issuer_did,
             "sub": holder_did,
+            "acc": accreditation_did,
             "iat": int(now.timestamp()),
             "exp": int((now + datetime.timedelta(days=exp_days)).timestamp()),
             "type": "ErasmusCredential",

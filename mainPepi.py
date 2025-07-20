@@ -1,22 +1,18 @@
 import json
 
-# Assumendo che le nuove classi siano in un file chiamato Blockchain.py
-# o che tu le abbia spostate nel file SimulatedBlockchain.py esistente
-# Fai attenzione ai percorsi di importazione
 from ActorsPepi.AccreditationAuthority import AccreditationAuthority
 from ActorsPepi.Issuer import Issuer
 from ActorsPepi.Student import Student
 from ActorsPepi.Verifier import Verifier
 from BlockchainPepi.DIDRegistry import DIDRegistry
 from BlockchainPepi.RevocationRegistry import RevocationRegistry
-# Importa la nuova classe Blockchain (NON SimulatedBlockchain)
-from BlockchainRaff.Blockchain import Blockchain # O il percorso corretto al tuo file Blockchain.py
+from BlockchainRaff.Blockchain import Blockchain
 from OtherTechnologiesPepi.MerkleTree import MerkleTree
 from Utils.CredentialUtils import CredentialUtils
 
 
 def main():
-    # Inizializza la nuova classe Blockchain
+
     blockchain = Blockchain()
     print("✅CREAZIONE DELLA BLOCKCHAIN SIMULATA (con PoW) AVVENUTA CON SUCCESSO")
     did_registry = DIDRegistry(blockchain)
@@ -25,76 +21,87 @@ def main():
     print("✅CREAZIONE DEL REGISTRO PER LA REVOCA AVVENUTA CON SUCCESSO")
     print("=" * 50)
 
-    issuer = Issuer()
+    issuer = Issuer(did_registry, revocation_registry)
     print("✅CREAZIONE DELL'ISSUER AVVENUTA CON SUCCESSO")
-    student = Student()
+    did_issuer = issuer.get_did()
+    doc_issuer = issuer.get_did_document()
+    print(f"did: {did_issuer}")
+    print(f"did_document: {json.dumps(doc_issuer, indent=4)}")
+    print("=" * 50)
+
+    student = Student(did_registry, revocation_registry)
     print("✅CREAZIONE DELLO STUDENTE AVVENUTA CON SUCCESSO")
-    verifier = Verifier()
+    did_student = student.get_did()
+    doc_student = student.get_did_document()
+    print(f"did: {did_student}")
+    print(f"did_document: {json.dumps(doc_student, indent=4)}")
+    print("=" * 50)
+
+    verifier = Verifier(did_registry, revocation_registry)
     print("✅CREAZIONE DEL VERIFIER AVVENUTA CON SUCCESSO")
-    accreditation_authority = AccreditationAuthority()
+    did_verifier = verifier.get_did()
+    doc_verifier = verifier.get_did_document()
+    print(f"did: {did_verifier}")
+    print(f"did_document: {json.dumps(doc_verifier, indent=4)}")
+    print("=" * 50)
+
+    accreditation_authority = AccreditationAuthority(did_registry, revocation_registry)
     print("✅CREAZIONE DELL'ENTE DI ACCREDITAMENTO AVVENUTA CON SUCCESSO")
+    did_accreditation = accreditation_authority.get_did()
+    doc_accreditation = accreditation_authority.get_did_document()
+    print(f"did: {did_accreditation}")
+    print(f"did_document: {json.dumps(doc_accreditation, indent=4)}")
     print("=" * 50)
 
-    # --- FASE 1: Generazione DID e Transazioni in Sospeso ---
-    did_issuer = issuer.generate_did(did_registry)
-    # Le transazioni DID sono ora in 'pending_transactions' della blockchain
-
-    did_student = student.generate_did(did_registry)
-    did_verifier = verifier.generate_did(did_registry)
-    did_authority = accreditation_authority.generate_did(did_registry)
-
-    # Nota: I documenti DID verranno recuperati solo dopo che le transazioni saranno minate
-    # Quindi, i print dei documenti DID li sposteremo dopo il mining.
-    # Per ora, stampa solo il fatto che i DID sono stati generati.
-    print(f"DID generati. Transazioni in sospeso: {len(blockchain.pending_transactions)}")
+    print("Accreditamento in corso dell'Issuer...")
+    certificate_issuer = accreditation_authority.generate_accreditation_certificate(did_issuer)
+    print("✅CERTIFICAZIONE DELL'ISSUER AVVENUTA CON SUCCESSO")
+    print(f"Certificate jwt:{certificate_issuer[:60]}...")
     print("=" * 50)
 
-    # --- FASE 2: Mining del primo blocco per includere i DID ---
-    print("\n--- Mining del blocco per le registrazioni DID ---")
+    print("Accreditamento in corso del Verifier...")
+    certificate_verifier = accreditation_authority.generate_accreditation_certificate(did_verifier)
+    print("✅CERTIFICAZIONE DEL VERIFIER AVVENUTA CON SUCCESSO")
+    print(f"Certificate jwt:{certificate_verifier[:60]}...")
+    print("=" * 50)
+
+    did_registry.save_did(did_student, doc_student)
+    did_registry.save_accredited_did(did_issuer, doc_issuer, certificate_issuer)
+    did_registry.save_accredited_did(did_verifier, doc_verifier, certificate_verifier)
+    did_registry.save_did(did_accreditation, doc_accreditation)
+
+    print(f"DID in salvataggio. Transazioni in sospeso: {len(blockchain.pending_transactions)}")
+    print("=" * 50)
+    print("Mining del blocco per le registrazioni DID ...")
     blockchain.mine_pending_transactions(mining_reward_address="univer_miner_1")
     print("=" * 50)
 
-    # Ora che i DID sono sulla blockchain (simulata), puoi recuperarli
+    old_doc_issuer = doc_issuer
+    old_doc_verifier = doc_verifier
+    old_doc_accreditation = doc_accreditation
+    old_doc_student = doc_student
+
     doc_issuer = did_registry.get_did_document(did_issuer)
-    print("DOCUMENTO DID PER L'ISSUER:", json.dumps(doc_issuer, indent=4))
-    print("=" * 50)
+    if doc_issuer == old_doc_issuer:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
+    else:
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
     doc_student = did_registry.get_did_document(did_student)
-    print("DOCUMENTO DID PER LO STUDENTE:", json.dumps(doc_student, indent=4))
-    print("=" * 50)
+    if doc_student == old_doc_student:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
+    else:
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
     doc_verifier = did_registry.get_did_document(did_verifier)
-    print("DOCUMENTO DID PER IL VERIFIER:", json.dumps(doc_verifier, indent=4))
-    print("=" * 50)
-    doc_authority = did_registry.get_did_document(did_authority)
-    print("DOCUMENTO DID PER L'ENTE DI ACCREDITAMENTO:", json.dumps(doc_authority, indent=4))
-    print("=" * 50)
-
-    # --- FASE 3: Richieste di Accreditamento (creano transazioni) ---
-    issuer.request_accreditation(accreditation_authority)
-    # is_did_accredited ora leggerà dalla blockchain, quindi serve il mining
-    print(f"Transazioni in sospeso dopo richiesta accreditamento Issuer: {len(blockchain.pending_transactions)}")
-
-    verifier.request_accreditation(accreditation_authority)
-    print(f"Transazioni in sospeso dopo richiesta accreditamento Verifier: {len(blockchain.pending_transactions)}")
-    print("=" * 50)
-
-    # --- FASE 4: Mining del blocco per le accreditazioni ---
-    print("\n--- Mining del blocco per le accreditazioni ---")
-    blockchain.mine_pending_transactions(mining_reward_address="univer_miner_2")
-    print("=" * 50)
-
-    # Ora verifica gli accreditamenti
-    if accreditation_authority.is_did_accredited(did_issuer):
-        print("✅ACCREDITAMENTO DELL'ISSUER AVVENUTA CON SUCCESSO")
+    if doc_verifier == old_doc_verifier:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
     else:
-        print("ACCREDITAMENTO NON AVVENUTO")
-    print("=" * 50)
-
-    if accreditation_authority.is_did_accredited(did_verifier):
-        print("✅ACCREDITAMENTO DEL VERIFIER AVVENUTA CON SUCCESSO")
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
+    doc_accreditation = did_registry.get_did_document(did_accreditation)
+    if doc_accreditation == old_doc_accreditation:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
     else:
-        print("ACCREDITAMENTO NON AVVENUTO")
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
     print("=" * 50)
-
 
     print("Caricamento dati Mock per Simulazione ...")
     data = CredentialUtils.load_mock_student_data()
@@ -109,7 +116,7 @@ def main():
     print("=" * 50)
 
     print("Creazione della Verifiable Credential da parte dell'Issuer ...")
-    verifiable_credential = issuer.create_verifiable_credential(did_student, merkle_root)
+    verifiable_credential = issuer.create_verifiable_credential(did_student, did_accreditation, merkle_root)
     print(f"✅CREAZIONE VC AVVENUTA CON SUCCESSO:  {verifiable_credential[:60]}...")
     print("=" * 50)
 
@@ -127,38 +134,7 @@ def main():
     print("=" * 50)
 
     print("Processo di verifica in Corso...")
-    # Qui, student.verify_credential e Verifier.verify_credential dovranno
-    # usare i registri che a loro volta leggono dalla blockchain
     student.verify_credential(encrypted_data, did_registry, "")
-    # verifier.verify_credential(...) # Assicurati che anche il Verifier usi il DIDRegistry e RevocationRegistry correttamente
-
-
-    # Aggiungi un esempio di revoca e relativo mining
-    print("\n--- Simulazione Revoca Credenziale ---")
-    credential_id_to_revoke = "credential:mock_credential_id_1" # Esempio di ID credenziale
-    revocation_registry.revoke_credential(credential_id_to_revoke)
-    print(f"Transazioni in sospeso dopo richiesta revoca: {len(blockchain.pending_transactions)}")
-    print("=" * 50)
-
-    # --- FASE 5: Mining del blocco per le revoche (e altre transazioni) ---
-    print("\n--- Mining del blocco per le revoche ---")
-    blockchain.mine_pending_transactions(mining_reward_address="univer_miner_3")
-    print("=" * 50)
-
-    # Ora verifica lo stato di revoca
-    print(f"La credenziale '{credential_id_to_revoke}' è revocata? {revocation_registry.is_revoked(credential_id_to_revoke)}")
-    print("=" * 50)
-
-
-    print("\n--- Verifica finale dell'integrità della Blockchain ---")
-    print(f"La blockchain è valida? {blockchain.is_chain_valid()}")
-    print("=" * 50)
-
-    # Puoi anche stampare la catena completa per debugging
-    # for block in blockchain.chain:
-    #     print(f"Blocco #{block.index}, Hash: {block.hash}, Transazioni: {len(block.transactions)}")
-    #     for tx in block.transactions:
-    #         print(f"  - {tx.get('type')}")
 
 
 if __name__ == "__main__":

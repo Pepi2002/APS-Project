@@ -1,37 +1,25 @@
-from ActorsPepi.AccreditationAuthority import AccreditationAuthority
 from ActorsPepi.Actor import Actor
 from BlockchainPepi.DIDRegistry import DIDRegistry
+from BlockchainPepi.RevocationRegistry import RevocationRegistry
 from Utils.CredentialUtils import CredentialUtils
 
 
 class Issuer(Actor):
-    def __init__(self):
-        super().__init__()
-        self.accreditation_certificate = None
+    def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
+        super().__init__(did_registry, revocation_registry)
 
-    def get_accreditation_certificate(self) -> str:
-        if self.accreditation_certificate is None:
-            raise ValueError("Issuer non ancora accreditato.")
-        return self.accreditation_certificate
-
-    def request_accreditation(self, authority: AccreditationAuthority) -> str:
-        try:
-            authority.register_entity(self.get_did(), self.get_public_key())
-            self.accreditation_certificate = authority.generate_accreditation_certificate(self.get_did())
-            return self.accreditation_certificate
-        except ValueError as e:
-            print(f"Errore nella richiesta di accreditamento: {e}")
-            raise
 
     def create_verifiable_credential(
             self,
             holder_did: str,
+            accreditation_did: str,
             merkle_root: str,
             exp_days: int = 365
     ) -> str:
         """
         Genera una Verifiable Credential firmata da questo issuer.
 
+        :param accreditation_did:
         :param holder_did: DID dello studente (holder)
         :param private_key_pem: chiave privata in PEM usata per firmare (tipicamente la chiave privata dell'issuer)
         :param merkle_root: Merkle root dei dati accademici
@@ -43,6 +31,7 @@ class Issuer(Actor):
         return CredentialUtils.generate_verifiable_credential(
             issuer_did=issuer_did,
             holder_did=holder_did,
+            accreditation_did=accreditation_did,
             private_key=self.get_private_key_pem().decode('utf-8'),
             merkle_root=merkle_root,
             exp_days=exp_days

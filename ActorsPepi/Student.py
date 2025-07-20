@@ -5,12 +5,13 @@ import jwt
 
 from ActorsPepi.Actor import Actor
 from BlockchainPepi.DIDRegistry import DIDRegistry
+from BlockchainPepi.RevocationRegistry import RevocationRegistry
 from OtherTechnologiesPepi.MerkleTree import MerkleTree
 
 
 class Student(Actor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
+        super().__init__(did_registry, revocation_registry)
 
     @staticmethod
     def verify_credential_signature(vc_jwt: str, issuer_public_key_pem: bytes) -> bool:

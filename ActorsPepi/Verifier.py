@@ -4,11 +4,13 @@ import jwt
 
 from ActorsPepi.AccreditationAuthority import AccreditationAuthority
 from ActorsPepi.Actor import Actor
+from BlockchainPepi.DIDRegistry import DIDRegistry
+from BlockchainPepi.RevocationRegistry import RevocationRegistry
 
 
 class Verifier(Actor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
+        super().__init__(did_registry, revocation_registry)
         self.nonce_registry = set()
         self.accreditation_certificate = None
 
