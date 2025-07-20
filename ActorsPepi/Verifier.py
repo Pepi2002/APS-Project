@@ -12,17 +12,6 @@ class Verifier(Actor):
     def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
         super().__init__(did_registry, revocation_registry)
         self.nonce_registry = set()
-        self.accreditation_certificate = None
-
-    def get_accreditation_certificate(self) -> str:
-        if self.accreditation_certificate is None:
-            raise ValueError("Issuer non ancora accreditato.")
-        return self.accreditation_certificate
-
-    def request_accreditation(self, authority: AccreditationAuthority) -> str:
-        authority.register_entity(self.get_did(), self.get_public_key())
-        self.accreditation_certificate = authority.generate_accreditation_certificate(self.get_did())
-        return self.accreditation_certificate
 
     def check_nonce(self, nonce: str) -> bool:
         if nonce in self.nonce_registry:
