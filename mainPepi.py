@@ -129,12 +129,38 @@ def main():
     message_json = message_json.encode('utf-8')
 
     print("Trasmissione della credenziale allo Studente...")
-    encrypted_data = issuer.transmit(did_student, message_json, did_registry)
+    encrypted_data = issuer.transmit(did_student, message_json)
     print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
     print("=" * 50)
 
     print("Processo di verifica in Corso...")
-    student.verify_credential(encrypted_data, did_registry, "")
+    result, disclosed_attributes, vc_jwt = student.verify_credential(encrypted_data, "")
+    if result == False or disclosed_attributes is None or vc_jwt is None:
+        print("Verifica non superata")
+        return
+
+    print(f"Informazioni ricevute: {json.dumps(disclosed_attributes, indent=4)}" )
+    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt[:60]}...")
+    print("=" * 50)
+
+    print("Salvataggio nella DApp in corso...")
+    student.store_credential_in_dapp(disclosed_attributes, vc_jwt)
+    print("✅SALVATAGGIO AVVENUTO CON SUCCESSO")
+    print("=" * 50)
+
+    print("Processo di Selezione in corso...")
+    vp, disclosed_attributes= student.create_verifiable_presentation(vc_jwt, "", did_verifier)
+    print("✅SELEZIONE COMPLETATA CON SUCCESSO")
+    print("=" * 50)
+
+    print(f"Informazioni selezionate: {json.dumps(disclosed_attributes, indent=4)}")
+    print(f"Verifiable Presentation in jwt creata: {vp[:60]}...")
+    print("=" * 50)
+
+    print("Trasmissione della credenziale al Verifier...")
+    encrypted_data = student.transmit(did_verifier, vp)
+    print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
+    print("=" * 50)
 
 
 if __name__ == "__main__":

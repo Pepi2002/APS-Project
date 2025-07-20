@@ -60,3 +60,15 @@ class DIDRegistry:
             pub_key_str = public_key_pem
 
         return pub_key_str.encode('utf-8')
+
+    def get_certificate(self, did: str) -> str | None:
+        """
+        Recupera il certificato JWT di accreditamento associato a un DID, se presente.
+        """
+        did_registrations = self.blockchain.get_transactions_by_type("DID_REGISTRATION")
+
+        for tx in reversed(did_registrations):
+            if tx.get("did") == did:
+                return tx.get("certificate")  # Può essere None se non accreditato
+
+        return None

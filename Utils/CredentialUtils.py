@@ -1,6 +1,7 @@
 import uuid
 import datetime
-from typing import Dict, List
+from typing import Dict, Any
+
 import jwt
 
 
@@ -120,7 +121,7 @@ class CredentialUtils:
             private_key: str,
             verified_vc_payload: Dict,
             disclosed_data: Dict,
-            merkle_proofs: List[str],
+            merkle_proofs: dict[str, dict[str, Any]],
             nonce: str,
             exp_minutes: int = 30
     ) -> str:

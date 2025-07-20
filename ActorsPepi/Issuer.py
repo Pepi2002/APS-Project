@@ -21,7 +21,6 @@ class Issuer(Actor):
 
         :param accreditation_did:
         :param holder_did: DID dello studente (holder)
-        :param private_key_pem: chiave privata in PEM usata per firmare (tipicamente la chiave privata dell'issuer)
         :param merkle_root: Merkle root dei dati accademici
         :param exp_days: validità in giorni
         :return: JWT della VC
@@ -32,12 +31,12 @@ class Issuer(Actor):
             issuer_did=issuer_did,
             holder_did=holder_did,
             accreditation_did=accreditation_did,
-            private_key=self.get_private_key_pem().decode('utf-8'),
+            private_key=self.get_private_key_pem().decode(),
             merkle_root=merkle_root,
             exp_days=exp_days
         )
 
-    def transmit(self, recipient_did: str, message: bytes, did_registry: DIDRegistry) -> bytes:
+    def transmit(self, recipient_did: str, message: bytes) -> bytes:
         """
             Trasmette un messaggio cifrato al destinatario usando il suo DID per ottenere la chiave pubblica.
 
@@ -46,7 +45,7 @@ class Issuer(Actor):
             :param did_registry: oggetto o servizio per risolvere DID e ottenere la chiave pubblica
             """
         try:
-            recipient_pubkey_pem = did_registry.get_public_key(recipient_did)
+            recipient_pubkey_pem = self.did_registry.get_public_key(recipient_did)
         except Exception as e:
             print(f"Errore risoluzione DID {recipient_did}: {e}")
             return

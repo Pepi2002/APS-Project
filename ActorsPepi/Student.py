@@ -7,54 +7,17 @@ from ActorsPepi.Actor import Actor
 from BlockchainPepi.DIDRegistry import DIDRegistry
 from BlockchainPepi.RevocationRegistry import RevocationRegistry
 from OtherTechnologiesPepi.MerkleTree import MerkleTree
+from OtherTechnologiesPepi.StudentDApp import StudentDApp
+from Utils.CredentialUtils import CredentialUtils
 
 
 class Student(Actor):
     def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
         super().__init__(did_registry, revocation_registry)
-
-    @staticmethod
-    def verify_credential_signature(vc_jwt: str, issuer_public_key_pem: bytes) -> bool:
-        """
-        Verifica la firma digitale del Verifiable Credential JWT ricevuto dall'Università Ospitante.
-        """
-        try:
-            # jwt.decode verifica firma e restituisce il payload
-            jwt.decode(vc_jwt, issuer_public_key_pem, algorithms=["RS256"])
-            return True
-        except jwt.InvalidSignatureError:
-            print("Firma non valida")
-            return False
-        except Exception as e:
-            print(f"Errore durante verifica firma: {e}")
-            return False
-
-    @staticmethod
-    def verify_merkle_root(full_attributes: Dict[str, Any], expected_merkle_root: str) -> bool:
-        """
-        Ricostruisce e confronta la Merkle root dei dati accademici completi con quella presente nel VC.
-        """
-        merkle_tree = MerkleTree(full_attributes)
-        merkle_root = merkle_tree.get_merkle_root()
-        return merkle_root == expected_merkle_root
+        self.student_dapp = StudentDApp()
 
 
-    def is_revoked(self, credential_id: str) -> bool:
-        """
-        Controlla se la credenziale è stata revocata consultando la blockchain.
-        """
-        return False
-
-    def verify_credential(self, encrypted_package: bytes, did_registry: DIDRegistry, credential_id: str) -> bool:
-        """
-        Verifica completa della credenziale partendo dal pacchetto criptato ricevuto.
-
-        :param encrypted_package: dati cifrati ricevuti dallo issuer (es. dal metodo transmit)
-        :param did_registry: dizionario {did: did_document} per ottenere chiavi pubbliche
-        :param credential_id: id della credenziale da verificare per revoca
-        :return: True se tutte le verifiche passano, False altrimenti
-        """
-
+    def decripting_package(self, encrypted_package: bytes):
         print("Decriptazione pacchetto...")
         try:
             decrypted_payload = self.hybrid_crypto.decrypt(encrypted_package, self.get_private_key_pem())
@@ -71,109 +34,202 @@ class Student(Actor):
             return False
         else:
             print("✅Decriptazione avvenuta con successo")
-        print("="*50)
 
-        print("Estrazione dati dal JWT per ottenere DID issuer...")
+        return disclosed_attributes, vc_jwt
+
+    def verify_accreditation_certificate(self, vc_payload):
+        print("Verifica di certificazione dell'issuer...")
+        issuer_did = vc_payload.get("iss")
+        authority_did = vc_payload.get("acc")
+
+        if not issuer_did or not authority_did:
+            print("❌ VC mancante di campo 'iss' o 'acc'")
+            return False
+
         try:
-            unverified_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
-            issuer_did = unverified_payload.get("iss")
-            if issuer_did is None:
-                print("❌Issuer DID mancante nel JWT")
+            authority_pubkey = self.did_registry.get_public_key(authority_did)
+
+            certificate_jwt = self.did_registry.get_certificate(issuer_did)
+            if not certificate_jwt:
+                print("❌ Nessun certificato di accreditamento trovato per l'issuer")
                 return False
-            else:
-                print("✅Recupero DID avvenuto con successo")
+
+            payload = jwt.decode(certificate_jwt, authority_pubkey, algorithms=["RS256"])
+
+            if payload.get("sub") != issuer_did:
+                print("❌ Il certificato non accredita l'issuer corretto")
+                return False
+
+            print("✅ Certificato di accreditamento valido")
+            return True
+
+        except jwt.ExpiredSignatureError:
+            print("❌ Il certificato di accreditamento è scaduto")
+            return False
+        except jwt.InvalidSignatureError:
+            print("❌ Firma del certificato non valida")
+            return False
         except Exception as e:
-            print(f"Errore nell'estrazione issuer DID: {e}")
+            print(f"❌ Errore nella verifica del certificato di accreditamento: {e}")
             return False
-        print("=" * 50)
-
-        print(f"Recupero chiave pubblica da DID registry per issuer {issuer_did}...")
-        try:
-            issuer_public_key_pem = did_registry.get_public_key(issuer_did)
-            print("✅Recupero chiave pubblica avvenuto con successo")
-        except Exception as e:
-            print(f"❌ Errore nel recupero della chiave pubblica dal DID Registry: {e}")
-            return False
-        print("=" * 50)
-
-        print("Verifica firma del JWT...")
-        if not self.verify_credential_signature(vc_jwt, issuer_public_key_pem):
-            print("❌Firma del JWT non valida")
-            return False
-        else:
-            print("✅Verifica firma avvenuto con successo")
-        print("=" * 50)
-
-        print("Decodifica e controllo payload JWT...")
-        vc_data = self.obtain_structured_data(vc_jwt, issuer_public_key_pem)
-        if vc_data is None:
-            print("❌Errore nell'estrazione dati dal JWT")
-            return False
-        else:
-            print("✅Estrazione avvenuta con successo:\n", json.dumps(vc_data, indent=4))
-        print("=" * 50)
-
-        expected_merkle_root = vc_data.get("merkleRoot")
-        if expected_merkle_root is None:
-            print("Merkle Root mancante nel JWT")
-            return False
-
-        print("Calcolo Merkle Root sugli attributi divulgati...")
-        if not self.verify_merkle_root(disclosed_attributes, expected_merkle_root):
-            print("❌Confronto Merkle Root fallito")
-            return False
-        else:
-            print("✅Confronto sulla Merkle Root avvenuta con successo")
-        print("=" * 50)
-
-        print("Verifica stato di revoca...")
-        if self.is_revoked(credential_id):
-            print("❌Credenziale revocata")
-            return False
-        else:
-            print("✅Verifica stato di revoca avvenuto con successo")
-        print("=" * 50)
-
-        print("✅VERIFICA COMPLETA SUPERATA CON SUCCESSO")
-        print("=" * 50)
-        return True
 
     @staticmethod
-    def obtain_structured_data(jwt_token: str, public_key_pem: bytes) -> dict:
+    def verify_credential_signature(vc_jwt: str, issuer_public_key_pem: bytes) -> bool:
+        """
+        Verifica la firma digitale del Verifiable Credential JWT ricevuto dall'Università Ospitante.
+        """
+        print("Verifica sull'integrità della verifiable credential...")
         try:
-            # decodifica e verifica firma
-            data = jwt.decode(jwt_token, public_key_pem, algorithms=["RS256"])
-            return data
-        except jwt.ExpiredSignatureError:
-            print("Token scaduto")
-            return None
+            jwt.decode(vc_jwt, issuer_public_key_pem, algorithms=["RS256"])
+            return True
         except jwt.InvalidSignatureError:
             print("Firma non valida")
-            return None
+            return False
         except Exception as e:
-            print(f"Errore nel decoding JWT: {e}")
-            return None
+            print(f"Errore durante verifica firma: {e}")
+            return False
 
-    def create_verifiable_presentation(
-            self,
-            credential_jwt: str,
-            disclosed_attributes: dict,
-            merkle_proofs: list,
-            nonce: str
-    ) -> str:
+    @staticmethod
+    def verify_merkle_root_from_vc(vc_jwt: str, disclosed_attributes: Dict[str, Any]) -> bool:
         """
-        Crea una Verifiable Presentation firmata dallo studente, includendo il nonce challenge ricevuto.
+        Verifica che la Merkle root dei disclosed attributes corrisponda a quella presente nella VC.
 
-        :param credential_jwt: JWT della Verifiable Credential ricevuta dall'issuer
-        :param disclosed_attributes: attributi che lo studente decide di rivelare
-        :param merkle_proofs: proof per gli attributi selezionati
-        :param nonce: challenge per prevenire replay
-        :return: VP firmata come JWT o struttura firmata
+        :param vc_jwt: JWT della Verifiable Credential
+        :param disclosed_attributes: attributi che lo studente ha deciso di rivelare
+        :return: True se la Merkle root combacia, False altrimenti
         """
-        raise NotImplementedError("create_verifiable_presentation deve essere implementato.")
+        print("Verifica sull'integrità degli attributi mandati in chiaro...")
+        try:
+            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+            expected_root = vc_payload.get("merkleRoot")
+            if not expected_root:
+                print("❌ Merkle root mancante nel VC")
+                return False
 
-    def transmit(self, recipient_did: str, message: bytes) -> None:
+            merkle_tree = MerkleTree(disclosed_attributes)
+            calculated_root = merkle_tree.get_merkle_root()
+
+            if expected_root != calculated_root:
+                print("❌ Merkle root mismatch:")
+                print(f"  Attesa:    {expected_root}")
+                print(f"  Calcolata: {calculated_root}")
+                return False
+
+            print("✅ Merkle root verificata con successo")
+            return True
+
+        except Exception as e:
+            print(f"Errore durante verifica Merkle root: {e}")
+            return False
+
+
+    def is_revoked(self, credential_id: str) -> bool:
+        """
+        Controlla se la credenziale è stata revocata consultando la blockchain.
+        """
+        return False
+
+    def verify_credential(self, encrypted_package: bytes, credential_id: str):
+        """
+        Verifica completa della credenziale partendo dal pacchetto criptato ricevuto.
+
+        :param encrypted_package: dati cifrati ricevuti dallo issuer (es. dal metodo transmit)
+        :param did_registry: dizionario {did: did_document} per ottenere chiavi pubbliche
+        :param credential_id: id della credenziale da verificare per revoca
+        :return: True se tutte le verifiche passano, False altrimenti
+        """
+        result = self.decripting_package(encrypted_package)
+        if not result:
+            return False, None, None
+        disclosed_attributes, vc_jwt = result
+
+        try:
+            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+        except Exception as e:
+            print(f"Errore parsing VC JWT: {e}")
+            return False, None, None
+
+        self.verify_accreditation_certificate(vc_payload)
+
+        issuer_did = vc_payload.get("iss")
+        try:
+            issuer_pubkey = self.did_registry.get_public_key(issuer_did)
+            if not self.verify_credential_signature(vc_jwt, issuer_pubkey):
+                print("❌ Firma della VC non valida")
+                return False, None, None
+            print("✅ Firma della VC verificata")
+        except Exception as e:
+            print(f"Errore ottenimento chiave pubblica issuer: {e}")
+            return False, None, None
+
+        if not self.verify_merkle_root_from_vc(vc_jwt, disclosed_attributes):
+            return False, None, None
+
+        print("Verifica sulla validità del messaggio...")
+        if self.is_revoked(credential_id):
+            print("❌ Credenziale revocata")
+            return False, None, None
+        else:
+            print("✅ Controllo sulla revoca superato")
+
+        print("\n✅ Tutte le verifiche superate con successo")
+        print("="*50)
+        return True, disclosed_attributes, vc_jwt
+
+    def store_credential_in_dapp(self, disclosed_attributes: dict, vc_jwt: str):
+        self.student_dapp.store_credential(disclosed_attributes, vc_jwt)
+
+    def create_verifiable_presentation(self, vc_jwt: str, nonce: str, verifier_did: str):
+        # Decodifica payload VC senza verificare (già verificata prima)
+        vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+
+        full_credential = self.student_dapp.get_credential()
+        full_vc_data = full_credential["disclosed_attributes"]
+
+        # Ottieni gli attributi selezionati tramite DApp
+        disclosed_attributes = self.student_dapp.select_attributes()
+
+        # Costruisci MerkleTree con i dati completi (tutta la VC)
+        merkle_tree = MerkleTree(full_vc_data)
+
+        # Calcola le proof per ogni attributo divulgato
+        merkle_proofs = {}
+        flat_disclosed = merkle_tree.flatten_data(disclosed_attributes)
+        for path, value in flat_disclosed:
+            proof = merkle_tree.calculate_merkle_proof(path)
+            if proof:
+                merkle_proofs[path] = proof
+
+        filtered_vc_payload = {
+            "jti": vc_payload.get("jti"),
+            "iss": vc_payload.get("iss"),
+            "acc": vc_payload.get("acc")
+        }
+
+        # Ora costruisci il payload della VP (puoi riutilizzare la tua logica di generate_verifiable_presentation)
+        vp_jwt = CredentialUtils.generate_verifiable_presentation(
+            holder_did=self.did,
+            verifier_did=verifier_did,
+            private_key=self.get_private_key_pem().decode(),
+            verified_vc_payload=filtered_vc_payload,
+            disclosed_data=disclosed_attributes,
+            merkle_proofs=merkle_proofs,
+            nonce=nonce
+        )
+
+        return vp_jwt, disclosed_attributes
+
+    def transmit(self, recipient_did: str, message: str):
         """
         Metodo astratto per la trasmissione sicura di un messaggio a un altro attore identificato dal suo DID.
         """
-        raise NotImplementedError("Il metodo transmit deve essere implementato dalla sottoclasse.")
+        try:
+            recipient_pubkey_pem = self.did_registry.get_public_key(recipient_did)
+        except Exception as e:
+            print(f"Errore risoluzione DID {recipient_did}: {e}")
+            return None
+
+        message = message.encode('utf-8')
+        encrypted_message = self.hybrid_crypto.encrypt(message, recipient_pubkey_pem)
+        print(f"Invio messaggio cifrato a {recipient_did}:\n{encrypted_message.hex()[:60]}...")
+        return encrypted_message
