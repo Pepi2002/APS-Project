@@ -106,6 +106,10 @@ def main():
         print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
     print("=" * 50)
 
+    print("Simulazione accesso alla DApp da parte dello studente...")
+    student_dapp.authenticate_user()
+    print("✅AUTENTICAZIONE AVVENUTA CON SUCCESSO")
+
     print("Caricamento dati Mock per Simulazione ...")
     data = CredentialUtils.load_mock_student_data()
     print(json.dumps(data, indent=4))

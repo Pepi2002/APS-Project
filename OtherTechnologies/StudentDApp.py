@@ -1,3 +1,4 @@
+import json
 from typing import Dict
 
 
@@ -14,6 +15,29 @@ class StudentDApp:
 
     def get_credential(self):
         return self.current_credential
+
+    @staticmethod
+    def authenticate_user(max_attempts: int = 3) -> bool:
+        try:
+            with open("Utils/credential.json", "r") as f:
+                credentials = json.load(f)
+        except FileNotFoundError:
+            print("❌File delle credenziali non trovato.")
+            return False
+
+        for attempt in range(1, max_attempts + 1):
+            print(f"\nTentativo di accesso ({attempt}/{max_attempts})")
+            email_input = input("Email: ")
+            password_input = input("🔑 Password: ").strip()
+
+            if email_input == credentials.get("email") and password_input == credentials.get("password"):
+                print("✅Accesso effettuato con successo.\n")
+                return True
+            else:
+                print(f"❌ Credenziali non valide.")
+
+        print("❌Numero massimo di tentativi raggiunto. Accesso negato.")
+        return False
 
     def select_attributes(self) -> Dict[str, any]:
         if not self.current_credential:
