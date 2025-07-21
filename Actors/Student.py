@@ -199,9 +199,13 @@ class Student(Actor):
         merkle_proofs = {}
         flat_disclosed = merkle_tree.flatten_data(disclosed_attributes)
         for path, value in flat_disclosed:
-            proof = merkle_tree.calculate_merkle_proof(path)
-            if proof:
-                merkle_proofs[path] = proof
+            proof_result = merkle_tree.calculate_merkle_proof(path)
+            if proof_result:
+                leaf_value, proof_path = proof_result
+                if leaf_value == value:
+                    merkle_proofs[path] = proof_path
+                else:
+                    print(f"❌Attenzione: valore differto per {path}")
 
         nonce = CSPRNGGenerator.generate_nonce()
 

@@ -112,14 +112,22 @@ class Verifier(Actor):
 
             vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
             expected_root = vc_payload.get("merkleRoot")
-
             if not expected_root:
                 print("❌Merkle root mancante nella VC")
                 return False
 
-            for proof in merkle_proofs.values():
-                if not MerkleTree.verify_merkle_proof(proof, expected_root):
-                    print(f"❌Merkle proof fallita per attributo: {proof.get('attribute')}")
+            flat_disclosed = dict(MerkleTree.flatten_data(disclosed_attributes))
+
+            for path, proof in merkle_proofs.items():
+                if path not in flat_disclosed:
+                    print(f"❌Attributo {path} non trovato tra gli attributi rivelati")
+                    return False
+
+                leaf_data = {"path": path, "value": flat_disclosed[path]}
+                leaf_hash = MerkleTree.hash_data(leaf_data)
+
+                if not MerkleTree.verify_proof(leaf_hash, proof, expected_root):
+                    print(f"❌Merkle proof fallita per attributo: {path}")
                     return False
 
             print("✅Tutte le Merkle Proofs verificate con successo")

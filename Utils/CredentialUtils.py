@@ -89,9 +89,13 @@ class CredentialUtils:
         :return: JWT (Verifiable Credential)
         """
 
+        #Ottiene la data attuale
         now = datetime.datetime.now(datetime.timezone.utc)
+
+        #Crea un identificativo univoco
         credential_id = str(uuid.uuid4())
 
+        #Crea il payload della credenziale
         payload = {
             "jti": credential_id,
             "iss": issuer_did,
@@ -107,11 +111,13 @@ class CredentialUtils:
             "merkleRoot": merkle_root
         }
 
+        #Crea l'header della credenziale
         headers = {
             "alg": "RS256",
             "typ": "JWT"
         }
 
+        #Ritorna la credenziale firmata usando la chiave privata di chi l'ha creata
         return jwt.encode(payload, private_key, algorithm="RS256", headers=headers)
 
     @staticmethod
@@ -121,7 +127,7 @@ class CredentialUtils:
             private_key: str,
             verified_vc_jwt: str,
             disclosed_data: Dict,
-            merkle_proofs: dict[str, dict[str, Any]],
+            merkle_proofs: dict[str, list[tuple[str, str]]],
             nonce: str,
             exp_minutes: int = 30
     ) -> str:
@@ -139,10 +145,12 @@ class CredentialUtils:
         :return: JWT firmato (VP)
         """
 
+        #Ottiene la data attuale
         now = datetime.datetime.now(datetime.timezone.utc)
 
+        #Crea payload della credenziale
         payload = {
-            "jti": str(uuid.uuid4()),
+            "jti": str(uuid.uuid4()), #Crea identificativo Uunivoco
             "iss": holder_did,
             "aud": verifier_did,
             "iat": int(now.timestamp()),
@@ -153,9 +161,11 @@ class CredentialUtils:
             "merkleProofs": merkle_proofs
         }
 
+        #Crea header della credenziale
         headers = {
             "alg": "RS256",
             "typ": "JWT"
         }
 
+        #Ritorna la credenziale firmata con la chiave privata di chi l'ha creata
         return jwt.encode(payload, private_key, algorithm="RS256", headers=headers)
