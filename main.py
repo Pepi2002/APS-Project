@@ -218,7 +218,7 @@ def main():
     #Simulazione della trasmissione della VP
     print("Trasmissione della credenziale al Verifier...")
     encrypted_data_vp = student.transmit(did_verifier, vp)
-    print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
+    print("✅TRASMISSIONE VP AVVENUTA CON SUCCESSO")
     print("=" * 50)
 
     #Verifica della VP
