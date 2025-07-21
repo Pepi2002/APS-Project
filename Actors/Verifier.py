@@ -71,7 +71,6 @@ class Verifier(Actor):
             vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
             issuer_did = vc_payload.get("iss")
             authority_did = vc_payload.get("acc")
-
             if not issuer_did or not authority_did:
                 print("❌Campi 'iss' o 'acc' mancanti nella VC.")
                 return None
@@ -79,7 +78,6 @@ class Verifier(Actor):
             authority_pubkey = self.did_registry.get_public_key(authority_did)
             certificate_jwt = self.did_registry.get_certificate(issuer_did)
             certificate_payload = jwt.decode(certificate_jwt, authority_pubkey, algorithms=["RS256"])
-
             if certificate_payload.get("sub") != issuer_did:
                 print("❌Il certificato non accredita correttamente l'issuer.")
                 return None
@@ -131,14 +129,22 @@ class Verifier(Actor):
             print(f"❌ Errore durante la verifica della Merkle root: {e}")
             return False
 
-    def check_revocation(self, credential_id: str) -> bool:
+    def check_revocation(self, vc_jwt: str) -> bool:
         print("Verifica revoca credenziale...")
-        if not credential_id:
-            print("❌ ID della credenziale mancante")
+        try:
+            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+            credential_id = vc_payload.get("jti")
+            if not credential_id:
+                print("❌ID della credenziale (jti) mancante nella VC")
+                return False
+            if self.revocation_registry.is_revoked(credential_id):
+                print("❌Credenziale revocata (verificato via blockchain)")
+                return False
+            print("✅Credenziale attiva e non revocata")
+            return True
+        except Exception as e:
+            print(f"❌Errore durante la verifica revoca: {e}")
             return False
-        # Placeholder: logica di revoca da blockchain
-        print("✅Credenziale attiva e non revocata")
-        return True
 
     def verify_presentation(self, encrypted_package: bytes):
         print("Avvio processo di verifica della Verifiable Presentation")
@@ -163,7 +169,7 @@ class Verifier(Actor):
         if not self.verify_merkle_root_from_vp(vp_payload):
             return False, None, None
 
-        if not self.check_revocation(vc_payload.get("jti")):
+        if not self.check_revocation(vp_payload.get("verifiableCredential")):
             return False, None, None
 
         print("\n✅Tutte le verifiche superate con successo")

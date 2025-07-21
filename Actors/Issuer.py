@@ -1,3 +1,5 @@
+import jwt
+
 from Actors.Actor import Actor
 from Blockchain.DIDRegistry import DIDRegistry
 from Blockchain.RevocationRegistry import RevocationRegistry
@@ -51,3 +53,34 @@ class Issuer(Actor):
         encrypted_message = self.hybrid_crypto.encrypt(message, recipient_pubkey_pem)
         print(f"Invio messaggio cifrato a {recipient_did}:\n{encrypted_message.hex()[:60]}...")
         return encrypted_message
+
+    def revoke_credential(self, vc_jwt: str) -> bool:
+        """
+        Revoca una Verifiable Credential passando il suo JWT.
+
+        :param vc_jwt: il JWT della Verifiable Credential
+        :return: True se la revoca ha avuto successo, False altrimenti
+        """
+        try:
+            print("Revoca in corso...")
+
+            # Decodifica senza verifica della firma
+            payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+            credential_id = payload.get("jti")
+
+            if not credential_id:
+                print("❌Campo 'jti' mancante nella VC, impossibile revocare.")
+                return False
+
+            success = self.revocation_registry.revoke_credential(credential_id)
+
+            if success:
+                print("✅Revoca avvenuta con successo.")
+            else:
+                print("❌La revoca non è stata eseguita (potrebbe essere già stata revocata).")
+
+            return success
+
+        except Exception as e:
+            print(f"❌Errore durante la revoca della VC: {e}")
+            return False

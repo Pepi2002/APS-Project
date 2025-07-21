@@ -18,7 +18,7 @@ class Student(Actor):
         self.student_dapp = StudentDApp()
 
 
-    def decripting_package(self, encrypted_package: bytes):
+    def decrypting_package(self, encrypted_package: bytes):
         print("Decriptazione pacchetto...")
         try:
             decrypted_payload = self.hybrid_crypto.decrypt(encrypted_package, self.get_private_key_pem())
@@ -123,14 +123,22 @@ class Student(Actor):
             print(f"Errore durante verifica Merkle root: {e}")
             return False
 
-
-    def is_revoked(self, credential_id: str) -> bool:
+    def is_revoked(self, vc_jwt: str) -> bool:
         """
-        Controlla se la credenziale è stata revocata consultando la blockchain.
+        Verifica se la VC è stata revocata estraendo l'ID (jti) dal JWT.
         """
-        return False
+        try:
+            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+            credential_id = vc_payload.get("jti")
+            if not credential_id:
+                print("❌ ID della credenziale (jti) mancante nel VC")
+                return True  # Trattiamo l'assenza di jti come revocata per sicurezza
+            return self.revocation_registry.is_revoked(credential_id)
+        except Exception as e:
+            print(f"❌ Errore durante verifica revoca: {e}")
+            return True  # In caso di errore, assumiamo revoca per sicurezza
 
-    def verify_credential(self, encrypted_package: bytes, credential_id: str):
+    def verify_credential(self, encrypted_package: bytes):
         """
         Verifica completa della credenziale partendo dal pacchetto criptato ricevuto.
 
@@ -138,7 +146,7 @@ class Student(Actor):
         :param credential_id: id della credenziale da verificare per revoca
         :return: True se tutte le verifiche passano, False altrimenti
         """
-        result = self.decripting_package(encrypted_package)
+        result = self.decrypting_package(encrypted_package)
         if not result:
             return False, None, None
         disclosed_attributes, vc_jwt = result
@@ -166,11 +174,11 @@ class Student(Actor):
             return False, None, None
 
         print("Verifica sulla validità del messaggio...")
-        if self.is_revoked(credential_id):
+        if self.is_revoked(vc_jwt):
             print("❌Credenziale revocata")
             return False, None, None
         else:
-            print("✅Controllo sulla revoca superato")
+            print("✅Credenziale attiva e non revocata")
 
         print("\n✅Tutte le verifiche superate con successo")
         print("="*50)
@@ -195,8 +203,7 @@ class Student(Actor):
             if proof:
                 merkle_proofs[path] = proof
 
-        number_generator = CSPRNGGenerator()
-        nonce = number_generator.generate_nonce()
+        nonce = CSPRNGGenerator.generate_nonce()
 
         vp_jwt = CredentialUtils.generate_verifiable_presentation(
             holder_did=self.did,

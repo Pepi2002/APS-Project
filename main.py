@@ -129,27 +129,27 @@ def main():
     message_json = message_json.encode('utf-8')
 
     print("Trasmissione della credenziale allo Studente...")
-    encrypted_data = issuer.transmit(did_student, message_json)
+    encrypted_data_vc = issuer.transmit(did_student, message_json)
     print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
     print("=" * 50)
 
     print("Processo di verifica in Corso...")
-    result, disclosed_attributes, vc_jwt = student.verify_credential(encrypted_data, "")
-    if result == False or disclosed_attributes is None or vc_jwt is None:
+    result, disclosed_attributes, vc_jwt1 = student.verify_credential(encrypted_data_vc)
+    if result == False or disclosed_attributes is None or vc_jwt1 is None:
         print("Verifica non superata")
         return
 
     print(f"Informazioni ricevute: {json.dumps(disclosed_attributes, indent=4)}" )
-    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt[:60]}...")
+    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt1[:60]}...")
     print("=" * 50)
 
     print("Salvataggio nella DApp in corso...")
-    student.store_credential_in_dapp(disclosed_attributes, vc_jwt)
+    student.store_credential_in_dapp(disclosed_attributes, vc_jwt1)
     print("✅SALVATAGGIO AVVENUTO CON SUCCESSO")
     print("=" * 50)
 
     print("Processo di Selezione in corso...")
-    vp, disclosed_attributes= student.create_verifiable_presentation(vc_jwt, did_verifier)
+    vp, disclosed_attributes= student.create_verifiable_presentation(vc_jwt1, did_verifier)
     print("✅SELEZIONE COMPLETATA CON SUCCESSO")
     print("=" * 50)
 
@@ -158,16 +158,44 @@ def main():
     print("=" * 50)
 
     print("Trasmissione della credenziale al Verifier...")
-    encrypted_data = student.transmit(did_verifier, vp)
+    encrypted_data_vp = student.transmit(did_verifier, vp)
     print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
     print("=" * 50)
 
-    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data)
+    print("Processo di verifica in Corso...")
+    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp)
     if result == False or disclosed_attributes is None or vp_jwt is None:
         print("Verifica non superata")
         return
     print(f"Informazioni ricevute: {json.dumps(disclosed_attributes, indent=4)}")
-    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt[:60]}...")
+    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt1[:60]}...")
+    print("=" * 50)
+
+    print("Simulazione di Revoca...")
+    issuer.revoke_credential(vc_jwt1)
+    print(f"Revoca in esecuzione. Transazioni in sospeso: {len(blockchain.pending_transactions)}")
+    print("=" * 50)
+    print("Mining del blocco per le registrazioni DID ...")
+    blockchain.mine_pending_transactions(mining_reward_address="univer_miner_1")
+    print("=" * 50)
+
+    print("Nuova Verifica della Verifiable Credential...")
+    result, disclosed_attributes, vc_jwt2 = student.verify_credential(encrypted_data_vc)
+    if result == False or disclosed_attributes is None or vc_jwt2 is None:
+        print("Verifica non superata")
+
+    print("Nuova Verifica della Verifiable Presentation...")
+    vp2, _ = student.create_verifiable_presentation(vc_jwt1, did_verifier)
+    encrypted_data_vp2 = student.transmit(did_verifier, vp2)
+    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp2)
+    if result == False or disclosed_attributes is None or vp_jwt is None:
+        print("Verifica non superata")
+    print("=" * 50)
+
+    print("Simulazione Replay Attack...")
+    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp2)
+    if result == False or disclosed_attributes is None or vp_jwt is None:
+        print("Verifica non superata")
     print("=" * 50)
 
 
