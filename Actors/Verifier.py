@@ -44,6 +44,35 @@ class Verifier(Actor):
             print(f"❌Errore parsing VP JWT: {e}")
             return None
 
+    def check_revocation(self, vc_jwt: str) -> bool:
+        """
+        Verifica che la credenziale non sia stata revocata
+        :param vc_jwt: verifiable credential sulla quale controllare la revoca
+        :return: true se è revocata, altrimenti false
+        """
+        print("Verifica revoca credenziale...")
+        try:
+            #Ottiene il payload della vc
+            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+
+            #Ottiene l'id della credenziale
+            credential_id = vc_payload.get("jti")
+
+            #Controlla la validità dell'id
+            if not credential_id:
+                print("❌ID della credenziale (jti) mancante nella VC")
+                return False
+
+            #Controlla se è revocata tramite il revocation registry
+            if self.revocation_registry.is_revoked(credential_id):
+                print("❌Credenziale revocata (verificato via blockchain)")
+                return False
+            print("✅Credenziale attiva e non revocata")
+            return True
+        except Exception as e:
+            print(f"❌Errore durante la verifica revoca: {e}")
+            return False
+
     def verify_nonce(self, nonce: str) -> bool:
         """
         Verifica che non ci sia stato un replay attack
@@ -211,35 +240,6 @@ class Verifier(Actor):
 
         except Exception as e:
             print(f"❌ Errore durante la verifica della Merkle root: {e}")
-            return False
-
-    def check_revocation(self, vc_jwt: str) -> bool:
-        """
-        Verifica che la credenziale non sia stata revocata
-        :param vc_jwt: verifiable credential sulla quale controllare la revoca
-        :return: true se è revocata, altrimenti false
-        """
-        print("Verifica revoca credenziale...")
-        try:
-            #Ottiene il payload della vc
-            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
-
-            #Ottiene l'id della credenziale
-            credential_id = vc_payload.get("jti")
-
-            #Controlla la validità dell'id
-            if not credential_id:
-                print("❌ID della credenziale (jti) mancante nella VC")
-                return False
-
-            #Controlla se è revocata tramite il revocation registry
-            if self.revocation_registry.is_revoked(credential_id):
-                print("❌Credenziale revocata (verificato via blockchain)")
-                return False
-            print("✅Credenziale attiva e non revocata")
-            return True
-        except Exception as e:
-            print(f"❌Errore durante la verifica revoca: {e}")
             return False
 
     def verify_presentation(self, encrypted_package: bytes):

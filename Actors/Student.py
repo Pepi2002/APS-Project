@@ -46,6 +46,30 @@ class Student(Actor):
 
         return disclosed_attributes, vc_jwt
 
+    def is_revoked(self, vc_jwt: str) -> bool:
+        """
+        Verifica se la VC è stata revocata estraendo l'ID (jti) dal JWT.
+        :param vc_jwt: JWT della Verifiable Credential
+        :return: true se la verifica va a buon fine, altrimenti false
+        """
+        try:
+            #Ottiene il payload
+            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+
+            #Ottiene l'id della credenziale
+            credential_id = vc_payload.get("jti")
+
+            #Controlla la validità dell'id
+            if not credential_id:
+                print("❌ ID della credenziale (jti) mancante nel VC")
+                return True  # Trattiamo l'assenza di jti come revocata per sicurezza
+
+            #Ritorna il controllo fatto dal revocation registry tramite l'id
+            return self.revocation_registry.is_revoked(credential_id)
+        except Exception as e:
+            print(f"❌ Errore durante verifica revoca: {e}")
+            return True  # In caso di errore, assumiamo revoca per sicurezza
+
     def verify_accreditation_certificate(self, vc_payload):
         """
         Verifica la validità del mittente controllandone il certificato
@@ -155,30 +179,6 @@ class Student(Actor):
         except Exception as e:
             print(f"Errore durante verifica Merkle root: {e}")
             return False
-
-    def is_revoked(self, vc_jwt: str) -> bool:
-        """
-        Verifica se la VC è stata revocata estraendo l'ID (jti) dal JWT.
-        :param vc_jwt: JWT della Verifiable Credential
-        :return: true se la verifica va a buon fine, altrimenti false
-        """
-        try:
-            #Ottiene il payload
-            vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
-
-            #Ottiene l'id della credenziale
-            credential_id = vc_payload.get("jti")
-
-            #Controlla la validità dell'id
-            if not credential_id:
-                print("❌ ID della credenziale (jti) mancante nel VC")
-                return True  # Trattiamo l'assenza di jti come revocata per sicurezza
-
-            #Ritorna il controllo fatto dal revocation registry tramite l'id
-            return self.revocation_registry.is_revoked(credential_id)
-        except Exception as e:
-            print(f"❌ Errore durante verifica revoca: {e}")
-            return True  # In caso di errore, assumiamo revoca per sicurezza
 
     def verify_credential(self, encrypted_package: bytes):
         """
