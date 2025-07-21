@@ -1,7 +1,7 @@
 import time
 from typing import List, Dict
 
-from BlockchainRaff.Block import Block
+from Blockchain.Block import Block
 
 
 class Blockchain:
@@ -13,7 +13,6 @@ class Blockchain:
         self.mining_reward = 10
         self.difficulty = 4
 
-        # Crea il blocco genesis
         self.create_genesis_block()
 
     def create_genesis_block(self):
@@ -32,7 +31,6 @@ class Blockchain:
 
     def mine_pending_transactions(self, mining_reward_address: str = "system"):
         """Mina un nuovo blocco con le transazioni pending"""
-        # Aggiungi transazione di reward per il mining
         reward_transaction = {
             "type": "mining_reward",
             "to": mining_reward_address,
@@ -41,17 +39,14 @@ class Blockchain:
         }
         self.pending_transactions.append(reward_transaction)
 
-        # Crea nuovo blocco
         block = Block(
             len(self.chain),
             self.pending_transactions,
             self.get_latest_block().hash
         )
 
-        # Mina il blocco
         block.mine_block(self.difficulty)
 
-        # Aggiungi alla chain e resetta pending transactions
         self.chain.append(block)
         self.pending_transactions = []
 
@@ -63,12 +58,10 @@ class Blockchain:
             current_block = self.chain[i]
             previous_block = self.chain[i - 1]
 
-            # Verifica hash del blocco corrente
             if current_block.hash != current_block.calculate_hash():
                 print(f"Hash invalido nel blocco {i}")
                 return False
 
-            # Verifica collegamento con blocco precedente
             if current_block.previous_hash != previous_block.hash:
                 print(f"Blocco {i} non collegato correttamente al precedente")
                 return False

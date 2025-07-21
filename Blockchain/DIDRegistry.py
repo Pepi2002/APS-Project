@@ -1,10 +1,9 @@
 import hashlib
 import json
-import uuid
 from datetime import datetime
 from typing import Dict
 
-from BlockchainRaff.Blockchain import Blockchain
+from Blockchain.Blockchain import Blockchain
 
 class DIDRegistry:
     def __init__(self, blockchain: 'Blockchain'):

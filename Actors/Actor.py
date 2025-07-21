@@ -6,9 +6,9 @@ from typing import Dict
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
-from BlockchainPepi.DIDRegistry import DIDRegistry
-from BlockchainPepi.RevocationRegistry import RevocationRegistry
-from OtherTechnologiesPepi.HybridCrypto import HybridCrypto
+from Blockchain.DIDRegistry import DIDRegistry
+from Blockchain.RevocationRegistry import RevocationRegistry
+from OtherTechnologies.HybridCrypto import HybridCrypto
 
 
 class Actor:
@@ -77,45 +77,3 @@ class Actor:
 
     def get_did_document(self) -> Dict:
         return self.did_document
-
-    def sign(self, message: bytes) -> bytes:
-        """Firma un messaggio raw in bytes."""
-        return self.private_key.sign(
-            message,
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
-
-    def sign_structured(self, data: dict) -> bytes:
-        """
-        Firma un dato strutturato (dict) serializzandolo in JSON e poi firmando i bytes.
-        Restituisce la firma in bytes raw.
-        """
-        # Serializza in JSON con ordinamento chiavi per coerenza
-        json_bytes = json.dumps(data, sort_keys=True).encode('utf-8')
-        # Firma i bytes JSON
-        signature = self.sign(json_bytes)
-        return signature
-
-    @staticmethod
-    def verify(message: bytes, signature: bytes, signer_public_key: rsa.RSAPublicKey) -> bool:
-        """Verifica una firma su un messaggio raw in bytes."""
-        try:
-            signer_public_key.verify(
-                signature,
-                message,
-                padding.PKCS1v15(),
-                hashes.SHA256()
-            )
-            return True
-        except Exception as e:
-            print(f"Verification failed: {e}")
-            return False
-
-    @staticmethod
-    def verify_structured(data: dict, signature: bytes, signer_public_key: rsa.RSAPublicKey) -> bool:
-        """
-        Verifica la firma su dati strutturati serializzati in JSON.
-        """
-        json_bytes = json.dumps(data, sort_keys=True).encode('utf-8')
-        return Actor.verify(json_bytes, signature, signer_public_key)

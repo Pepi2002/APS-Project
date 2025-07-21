@@ -1,13 +1,13 @@
 import json
 
-from ActorsPepi.AccreditationAuthority import AccreditationAuthority
-from ActorsPepi.Issuer import Issuer
-from ActorsPepi.Student import Student
-from ActorsPepi.Verifier import Verifier
-from BlockchainPepi.DIDRegistry import DIDRegistry
-from BlockchainPepi.RevocationRegistry import RevocationRegistry
-from BlockchainRaff.Blockchain import Blockchain
-from OtherTechnologiesPepi.MerkleTree import MerkleTree
+from Actors.AccreditationAuthority import AccreditationAuthority
+from Actors.Issuer import Issuer
+from Actors.Student import Student
+from Actors.Verifier import Verifier
+from Blockchain.DIDRegistry import DIDRegistry
+from Blockchain.RevocationRegistry import RevocationRegistry
+from Blockchain.Blockchain import Blockchain
+from OtherTechnologies.MerkleTree import MerkleTree
 from Utils.CredentialUtils import CredentialUtils
 
 
@@ -149,7 +149,7 @@ def main():
     print("=" * 50)
 
     print("Processo di Selezione in corso...")
-    vp, disclosed_attributes= student.create_verifiable_presentation(vc_jwt, "", did_verifier)
+    vp, disclosed_attributes= student.create_verifiable_presentation(vc_jwt, did_verifier)
     print("✅SELEZIONE COMPLETATA CON SUCCESSO")
     print("=" * 50)
 
@@ -160,6 +160,14 @@ def main():
     print("Trasmissione della credenziale al Verifier...")
     encrypted_data = student.transmit(did_verifier, vp)
     print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
+    print("=" * 50)
+
+    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data)
+    if result == False or disclosed_attributes is None or vp_jwt is None:
+        print("Verifica non superata")
+        return
+    print(f"Informazioni ricevute: {json.dumps(disclosed_attributes, indent=4)}")
+    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt[:60]}...")
     print("=" * 50)
 
 

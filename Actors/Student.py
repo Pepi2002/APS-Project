@@ -3,11 +3,12 @@ from typing import Dict, Any
 
 import jwt
 
-from ActorsPepi.Actor import Actor
-from BlockchainPepi.DIDRegistry import DIDRegistry
-from BlockchainPepi.RevocationRegistry import RevocationRegistry
-from OtherTechnologiesPepi.MerkleTree import MerkleTree
-from OtherTechnologiesPepi.StudentDApp import StudentDApp
+from Actors.Actor import Actor
+from Blockchain.DIDRegistry import DIDRegistry
+from Blockchain.RevocationRegistry import RevocationRegistry
+from OtherTechnologies.NumberGenerator import CSPRNGGenerator
+from OtherTechnologies.MerkleTree import MerkleTree
+from OtherTechnologies.StudentDApp import StudentDApp
 from Utils.CredentialUtils import CredentialUtils
 
 
@@ -43,7 +44,7 @@ class Student(Actor):
         authority_did = vc_payload.get("acc")
 
         if not issuer_did or not authority_did:
-            print("❌ VC mancante di campo 'iss' o 'acc'")
+            print("❌VC mancante di campo 'iss' o 'acc'")
             return False
 
         try:
@@ -51,26 +52,26 @@ class Student(Actor):
 
             certificate_jwt = self.did_registry.get_certificate(issuer_did)
             if not certificate_jwt:
-                print("❌ Nessun certificato di accreditamento trovato per l'issuer")
+                print("❌Nessun certificato di accreditamento trovato per l'issuer")
                 return False
 
             payload = jwt.decode(certificate_jwt, authority_pubkey, algorithms=["RS256"])
 
             if payload.get("sub") != issuer_did:
-                print("❌ Il certificato non accredita l'issuer corretto")
+                print("❌Il certificato non accredita l'issuer corretto")
                 return False
 
-            print("✅ Certificato di accreditamento valido")
+            print("✅Certificato di accreditamento valido")
             return True
 
         except jwt.ExpiredSignatureError:
             print("❌ Il certificato di accreditamento è scaduto")
             return False
         except jwt.InvalidSignatureError:
-            print("❌ Firma del certificato non valida")
+            print("❌Firma del certificato non valida")
             return False
         except Exception as e:
-            print(f"❌ Errore nella verifica del certificato di accreditamento: {e}")
+            print(f"❌Errore nella verifica del certificato di accreditamento: {e}")
             return False
 
     @staticmethod
@@ -103,19 +104,19 @@ class Student(Actor):
             vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
             expected_root = vc_payload.get("merkleRoot")
             if not expected_root:
-                print("❌ Merkle root mancante nel VC")
+                print("❌Merkle root mancante nel VC")
                 return False
 
             merkle_tree = MerkleTree(disclosed_attributes)
             calculated_root = merkle_tree.get_merkle_root()
 
             if expected_root != calculated_root:
-                print("❌ Merkle root mismatch:")
+                print("❌Merkle root mismatch:")
                 print(f"  Attesa:    {expected_root}")
                 print(f"  Calcolata: {calculated_root}")
                 return False
 
-            print("✅ Merkle root verificata con successo")
+            print("✅Merkle root verificata con successo")
             return True
 
         except Exception as e:
@@ -134,7 +135,6 @@ class Student(Actor):
         Verifica completa della credenziale partendo dal pacchetto criptato ricevuto.
 
         :param encrypted_package: dati cifrati ricevuti dallo issuer (es. dal metodo transmit)
-        :param did_registry: dizionario {did: did_document} per ottenere chiavi pubbliche
         :param credential_id: id della credenziale da verificare per revoca
         :return: True se tutte le verifiche passano, False altrimenti
         """
@@ -155,9 +155,9 @@ class Student(Actor):
         try:
             issuer_pubkey = self.did_registry.get_public_key(issuer_did)
             if not self.verify_credential_signature(vc_jwt, issuer_pubkey):
-                print("❌ Firma della VC non valida")
+                print("❌Firma della VC non valida")
                 return False, None, None
-            print("✅ Firma della VC verificata")
+            print("✅Firma della VC verificata")
         except Exception as e:
             print(f"Errore ottenimento chiave pubblica issuer: {e}")
             return False, None, None
@@ -167,32 +167,27 @@ class Student(Actor):
 
         print("Verifica sulla validità del messaggio...")
         if self.is_revoked(credential_id):
-            print("❌ Credenziale revocata")
+            print("❌Credenziale revocata")
             return False, None, None
         else:
-            print("✅ Controllo sulla revoca superato")
+            print("✅Controllo sulla revoca superato")
 
-        print("\n✅ Tutte le verifiche superate con successo")
+        print("\n✅Tutte le verifiche superate con successo")
         print("="*50)
         return True, disclosed_attributes, vc_jwt
 
     def store_credential_in_dapp(self, disclosed_attributes: dict, vc_jwt: str):
         self.student_dapp.store_credential(disclosed_attributes, vc_jwt)
 
-    def create_verifiable_presentation(self, vc_jwt: str, nonce: str, verifier_did: str):
-        # Decodifica payload VC senza verificare (già verificata prima)
-        vc_payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+    def create_verifiable_presentation(self, vc_jwt: str, verifier_did: str):
 
         full_credential = self.student_dapp.get_credential()
         full_vc_data = full_credential["disclosed_attributes"]
 
-        # Ottieni gli attributi selezionati tramite DApp
         disclosed_attributes = self.student_dapp.select_attributes()
 
-        # Costruisci MerkleTree con i dati completi (tutta la VC)
         merkle_tree = MerkleTree(full_vc_data)
 
-        # Calcola le proof per ogni attributo divulgato
         merkle_proofs = {}
         flat_disclosed = merkle_tree.flatten_data(disclosed_attributes)
         for path, value in flat_disclosed:
@@ -200,18 +195,14 @@ class Student(Actor):
             if proof:
                 merkle_proofs[path] = proof
 
-        filtered_vc_payload = {
-            "jti": vc_payload.get("jti"),
-            "iss": vc_payload.get("iss"),
-            "acc": vc_payload.get("acc")
-        }
+        number_generator = CSPRNGGenerator()
+        nonce = number_generator.generate_nonce()
 
-        # Ora costruisci il payload della VP (puoi riutilizzare la tua logica di generate_verifiable_presentation)
         vp_jwt = CredentialUtils.generate_verifiable_presentation(
             holder_did=self.did,
             verifier_did=verifier_did,
             private_key=self.get_private_key_pem().decode(),
-            verified_vc_payload=filtered_vc_payload,
+            verified_vc_jwt=vc_jwt,
             disclosed_data=disclosed_attributes,
             merkle_proofs=merkle_proofs,
             nonce=nonce

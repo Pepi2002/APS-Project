@@ -1,127 +1,152 @@
-import json
-from typing import Dict, Any, Optional
 import hashlib
+import json
+from typing import Dict, Any, List, Tuple, Optional
 
-class EnhancedMerkleTree:
-    """Implementazione migliorata del Merkle Tree con algoritmi specifici"""
 
+class MerkleTree:
     def __init__(self, data: Dict[str, Any]):
-        self.data = data
-        self.leaves = {}
-        self.tree_nodes = {}
-        self.paths = {}
-        self.root = self._build_merkle_tree()
+        """
+        Inizializza l'albero Merkle costruendo le foglie e l'intero albero.
+        :param data: dizionario dei dati da usare per generare le foglie
+        """
+        self.original_data = data
+        self.leaves = self.build_leaves(data)
+        self.tree = self.build_tree(self.leaves)
+        self.merkle_root = self.calculate_merkle_root()
 
-    def _sha256_hash(self, data: str) -> str:
-        """Algoritmo di Hash SHA-256"""
-        return hashlib.sha256(data.encode('utf-8')).hexdigest()
+    def get_merkle_root(self):
+        return self.merkle_root
 
-    def _build_merkle_tree(self) -> str:
-        """Algoritmo di Calcolo del Merkle Tree"""
-        print("🌳 Costruzione Merkle Tree...")
+    @staticmethod
+    def hash_data(data: Any) -> str:
+        """
+        Hasha un singolo dato serializzato JSON.
+        """
+        serialized = json.dumps(data, separators=(',', ':'), sort_keys=True)
+        return hashlib.sha256(serialized.encode('utf-8')).hexdigest()
 
-        # Fase 1: Crea le foglie (leaf nodes)
-        flat_data = self._flatten_dict(self.data)
-        leaf_hashes = []
+    def flatten_data(self, data: Any, path: str = '') -> List[Tuple[str, Any]]:
+        """
+        Appiattisce ricorsivamente i dati in una lista di (chiave_path, valore_atomico).
+        """
+        items = []
+        if isinstance(data, dict):
+            for k, v in data.items():
+                new_path = f"{path}.{k}" if path else k
+                items.extend(self.flatten_data(v, new_path))
+        elif isinstance(data, list):
+            for i, v in enumerate(data):
+                new_path = f"{path}[{i}]"
+                items.extend(self.flatten_data(v, new_path))
+        else:
+            items.append((path, data))
+        return items
 
-        for key, value in flat_data.items():
-            leaf_data = f"{key}:{json.dumps(value, sort_keys=True)}"
-            leaf_hash = self._sha256_hash(leaf_data)
-            self.leaves[key] = leaf_hash
-            leaf_hashes.append(leaf_hash)
-            print(f"    Foglia: {key} -> {leaf_hash[:16]}...")
+    def build_leaves(self, data: Dict[str, Any]) -> List[str]:
+        """
+        Costruisce la lista delle foglie hashate dal dizionario dati.
+        """
+        flat_items = self.flatten_data(data)
+        leaves = []
+        for path, value in flat_items:
+            leaf_data = {"path": path, "value": value}
+            leaves.append(self.hash_data(leaf_data))
+        return leaves
 
-        # Fase 2: Costruisce l'albero bottom-up
-        current_level = sorted(leaf_hashes)  # Ordina gli hash per una root consistente
-        level = 0
-
+    @staticmethod
+    def build_tree(leaves: List[str]) -> List[List[str]]:
+        """
+        Costruisce i livelli dell'albero Merkle fino alla root.
+        """
+        tree = [leaves]
+        current_level = leaves
         while len(current_level) > 1:
             next_level = []
             for i in range(0, len(current_level), 2):
                 left = current_level[i]
-                right = current_level[i + 1] if i + 1 < len(current_level) else left
-
-                # Combina i due hash figli
-                combined = f"{left}:{right}"
-                parent_hash = self._sha256_hash(combined)
-
-                # Memorizza la struttura per le prove
-                self.tree_nodes[parent_hash] = {
-                    "left": left,
-                    "right": right,
-                    "level": level
-                }
-
+                right = current_level[i+1] if i + 1 < len(current_level) else current_level[i]
+                combined = bytes.fromhex(left) + bytes.fromhex(right)
+                parent_hash = hashlib.sha256(combined).hexdigest()
                 next_level.append(parent_hash)
+            tree.append(next_level)
+            current_level = next_level
+        return tree
 
-            current_level = sorted(next_level)  # Ordina il nuovo livello
-            level += 1
+    def calculate_merkle_root(self) -> str:
+        if not self.tree:
+            return ''
+        return self.tree[-1][0]
 
-        merkle_root = current_level[0] if current_level else ""
-        print(f"✅ Merkle Root: {merkle_root[:16]}...")
-        return merkle_root
+    def get_proof(self, index: int) -> List[Tuple[str, str]]:
+        """
+        Restituisce la Merkle Proof per la foglia all'indice dato.
+        Ogni elemento è una tupla (hash_fratello, "left" o "right").
+        """
+        proof = []
+        idx = index
+        for level in self.tree[:-1]:
+            sibling_idx = idx + 1 if idx % 2 == 0 else idx - 1
+            if sibling_idx < len(level):
+                sibling_hash = level[sibling_idx]
+                direction = "right" if idx % 2 == 0 else "left"
+                proof.append((sibling_hash, direction))
+            idx = idx // 2
+        return proof
 
-    def _flatten_dict(self, data: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
-        """Appiattisce un dizionario nested mantenendo la struttura"""
-        items = {}
-        for key, value in data.items():
-            new_key = f"{prefix}.{key}" if prefix else key
-            if isinstance(value, dict):
-                items.update(self._flatten_dict(value, new_key))
-            elif isinstance(value, list):
-                for i, item in enumerate(value):
-                    if isinstance(item, dict):
-                        items.update(self._flatten_dict(item, f"{new_key}[{i}]"))
-                    else:
-                        items[f"{new_key}[{i}]"] = item
+    @staticmethod
+    def verify_proof(leaf_hash: str, proof: List[Tuple[str, str]], root: str) -> bool:
+        """
+        Verifica la Merkle Proof data la foglia, la proof e la root attesa.
+        """
+        computed_hash = leaf_hash
+        for sibling_hash, direction in proof:
+            if direction == "left":
+                combined = bytes.fromhex(sibling_hash) + bytes.fromhex(computed_hash)
             else:
-                items[new_key] = value
-        return items
+                combined = bytes.fromhex(computed_hash) + bytes.fromhex(sibling_hash)
+            computed_hash = hashlib.sha256(combined).hexdigest()
+        return computed_hash == root
 
     def calculate_merkle_proof(self, attribute_key: str) -> Optional[Dict[str, Any]]:
-        """Algoritmo di Calcolo del Merkle Proof"""
-        if attribute_key not in self.leaves:
+        flat_items = self.flatten_data(self.original_data)
+        index = None
+        for i, (path, value) in enumerate(flat_items):
+            if path == attribute_key:
+                index = i
+                leaf_value = value
+                break
+        if index is None:
+            print(f"❌ Chiave {attribute_key} non trovata tra le foglie.")
             return None
 
         print(f"🔍 Calcolo Merkle Proof per: {attribute_key}")
-
-        flat_data = self._flatten_dict(self.data)
-
-        # Ricostruzione semplificata del percorso di prova
-        # In una implementazione reale, si risalirebbe l'albero memorizzato
-        # per trovare i nodi "fratelli" necessari alla verifica.
-        # Qui, per semplicità, la verifica si baserà sulla coerenza della root.
-        proof_path = [{"info": "simplified_proof_path"}]
-        current_hash = self.leaves[attribute_key]
-
+        leaf_data = {"path": attribute_key, "value": leaf_value}
+        leaf_hash = self.hash_data(leaf_data)
+        proof_path = self.get_proof(index)
         proof = {
             "attribute": attribute_key,
-            "value": flat_data.get(attribute_key),
-            "leaf_hash": current_hash,
+            "value": leaf_value,
+            "leaf_hash": leaf_hash,
             "proof_path": proof_path,
-            "root": self.root
+            "root": self.merkle_root
         }
-
         print(f"✅ Merkle Proof generata per {attribute_key}")
         return proof
 
-    def verify_merkle_proof(self, proof: Dict[str, Any]) -> bool:
-        """Algoritmo di Verifica delle Merkle Proofs"""
+    @staticmethod
+    def verify_merkle_proof(proof: Dict[str, Any], expected_root: str) -> bool:
         print(f"🔍 Verifica Merkle Proof per: {proof['attribute']}")
 
-        # Ricalcola l'hash della foglia
-        leaf_data = f"{proof['attribute']}:{json.dumps(proof['value'], sort_keys=True)}"
-        calculated_hash = self._sha256_hash(leaf_data)
+        # Ricostruisce il leaf hash
+        leaf_data = {"path": proof['attribute'], "value": proof['value']}
+        calculated_hash = MerkleTree.hash_data(leaf_data)
 
-        # Verifica che l'hash calcolato corrisponda
         if calculated_hash != proof['leaf_hash']:
             print("❌ Hash della foglia non corrisponde")
             return False
 
-        # Verifica che la root corrisponda (semplificato)
-        # In un sistema reale, si userebbe il proof_path per ricalcolare la root
-        if proof['root'] != self.root:
-            print("❌ Merkle Root non corrisponde")
+        if not MerkleTree.verify_proof(proof['leaf_hash'], proof['proof_path'], expected_root):
+            print("❌ Merkle Proof non valida")
             return False
 
         print("✅ Merkle Proof verificata con successo")

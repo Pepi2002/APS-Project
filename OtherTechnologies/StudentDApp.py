@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import Dict
 
 
 class StudentDApp:
@@ -22,13 +22,11 @@ class StudentDApp:
 
         full_data = self.current_credential["disclosed_attributes"]
 
-        # 1. Aggiungi sempre studentInfo
         selected = {"studentInfo": full_data.get("studentInfo", {})}
         print("✅ Blocco 'studentInfo' incluso automaticamente.")
 
         erasmus_info = full_data.get("erasmusInfo", {})
 
-        # 2. Mostra opzioni di selezione per Erasmus
         selectable_options = {
             "1": ("erasmusStartDate", erasmus_info.get("erasmusStartDate")),
             "2": ("erasmusEndDate", erasmus_info.get("erasmusEndDate")),
@@ -48,7 +46,6 @@ class StudentDApp:
             for idx in selected_indices:
                 if idx in selectable_options:
                     key_path, value = selectable_options[idx]
-                    # Supporto per chiavi nidificate tipo "learningAgreement.agreedCourses"
                     parts = key_path.split(".")
                     current = selected.setdefault("erasmusInfo", {})
                     for part in parts[:-1]:

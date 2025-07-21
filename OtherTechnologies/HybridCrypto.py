@@ -1,33 +1,24 @@
-from NumberGenerator import CSPRNGGenerator
-import base64
-import os
-from typing import Dict
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+from OtherTechnologies.NumberGenerator import CSPRNGGenerator
 
 
 class HybridCrypto:
-
     def __init__(self):
-        self.csprng = CSPRNGGenerator()
+        self.number_gen = CSPRNGGenerator()
 
-    def encrypt_hybrid(self, data: bytes, recipient_public_key: RSAPublicKey) -> Dict[str, str]:
-        # Genera chiave simmetrica temporanea
-        session_key = self.csprng.generate_session_key()
-
-        # Genera IV casuale per AES-CTR
-        iv = os.urandom(16)
-
-        # Cifra i dati con AES-CTR
-        cipher = Cipher(algorithms.AES(session_key), modes.CTR(iv))
+    def encrypt(self, plaintext: bytes, recipient_public_key_pem: bytes) -> bytes:
+        sym_key = self.number_gen.generate_session_key()
+        nonce = self.number_gen.generate_key_material(16)
+        cipher = Cipher(algorithms.AES(sym_key), modes.CTR(nonce))
         encryptor = cipher.encryptor()
-        encrypted_data = encryptor.update(data) + encryptor.finalize()
+        encrypted_data = encryptor.update(plaintext) + encryptor.finalize()
 
-        # Cifra la chiave di sessione con RSA-OAEP
-        encrypted_key = recipient_public_key.encrypt(
-            session_key,
+        public_key = serialization.load_pem_public_key(recipient_public_key_pem)
+        encrypted_sym_key = public_key.encrypt(
+            sym_key,
             padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA256()),
                 algorithm=hashes.SHA256(),
@@ -35,23 +26,18 @@ class HybridCrypto:
             )
         )
 
-        return {
-            "encrypted_data": base64.b64encode(encrypted_data).decode(),
-            "encrypted_key": base64.b64encode(encrypted_key).decode(),
-            "iv": base64.b64encode(iv).decode()
-        }
+        len_enc_sym_key = len(encrypted_sym_key).to_bytes(2, byteorder='big')
+        return len_enc_sym_key + encrypted_sym_key + nonce + encrypted_data
 
-    def decrypt_hybrid(self, encrypted_package: Dict[str, str],
-                       recipient_private_key: RSAPrivateKey) -> bytes:
-        """Decifratura ibrida"""
-        # Decodifica i componenti
-        encrypted_data = base64.b64decode(encrypted_package["encrypted_data"])
-        encrypted_key = base64.b64decode(encrypted_package["encrypted_key"])
-        iv = base64.b64decode(encrypted_package["iv"])
+    def decrypt(self, encrypted_package: bytes, recipient_private_key_pem: bytes) -> bytes:
+        len_enc_sym_key = int.from_bytes(encrypted_package[0:2], byteorder='big')
+        encrypted_sym_key = encrypted_package[2:2 + len_enc_sym_key]
+        nonce = encrypted_package[2 + len_enc_sym_key: 2 + len_enc_sym_key + 16]
+        encrypted_data = encrypted_package[2 + len_enc_sym_key + 16:]
 
-        # Decifra la chiave di sessione con RSA-OAEP
-        session_key = recipient_private_key.decrypt(
-            encrypted_key,
+        private_key = serialization.load_pem_private_key(recipient_private_key_pem, password=None)
+        sym_key = private_key.decrypt(
+            encrypted_sym_key,
             padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA256()),
                 algorithm=hashes.SHA256(),
@@ -59,9 +45,8 @@ class HybridCrypto:
             )
         )
 
-        # Decifra i dati con AES-CTR
-        cipher = Cipher(algorithms.AES(session_key), modes.CTR(iv))
+        cipher = Cipher(algorithms.AES(sym_key), modes.CTR(nonce))
         decryptor = cipher.decryptor()
-        decrypted_data = decryptor.update(encrypted_data) + decryptor.finalize()
+        plaintext = decryptor.update(encrypted_data) + decryptor.finalize()
 
-        return decrypted_data
+        return plaintext

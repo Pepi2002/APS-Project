@@ -119,7 +119,7 @@ class CredentialUtils:
             holder_did: str,
             verifier_did: str,
             private_key: str,
-            verified_vc_payload: Dict,
+            verified_vc_jwt: str,
             disclosed_data: Dict,
             merkle_proofs: dict[str, dict[str, Any]],
             nonce: str,
@@ -128,19 +128,16 @@ class CredentialUtils:
         """
         Genera una Presentazione Accademica Verificabile (VP), partendo da una VC già verificata.
 
+        :param verified_vc_jwt:
         :param holder_did: DID dello studente
         :param verifier_did: DID del verificatore (destinatario)
         :param private_key: chiave privata dello studente per firmare la VP
-        :param verified_vc_payload: dizionario già decodificato e validato della Verifiable Credential
         :param disclosed_data: sottoinsieme dei dati accademici da divulgare
         :param merkle_proofs: le Merkle Proofs associate ai dati divulgati
         :param nonce: nonce fornito dal verificatore per evitare replay attack
         :param exp_minutes: tempo di validità della VP
         :return: JWT firmato (VP)
         """
-
-        vc_id = verified_vc_payload.get("jti")
-        vc_issuer = verified_vc_payload.get("iss")
 
         now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -151,12 +148,9 @@ class CredentialUtils:
             "iat": int(now.timestamp()),
             "exp": int((now + datetime.timedelta(minutes=exp_minutes)).timestamp()),
             "nonce": nonce,
-            "verifiableCredential": {
-                "id": vc_id,
-                "issuer": vc_issuer,
-                "studentData": disclosed_data,
-                "merkleProofs": merkle_proofs
-            }
+            "verifiableCredential": verified_vc_jwt,
+            "studentData": disclosed_data,
+            "merkleProofs": merkle_proofs
         }
 
         headers = {
