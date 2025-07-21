@@ -1,159 +1,175 @@
-from DIDManager import EnhancedDIDManager
-from RevocationRegistry import EnhancedRevocationRegistry
-from HybridCrypto import HybridCrypto
-from NumberGenerator import CSPRNGGenerator
-from typing import Dict, Any
-from Issuer import Issuer
-from Verifier import Verifier
-from Holder import Holder
+import json
+
+from Actors.AccreditationAuthority import AccreditationAuthority
+from Actors.Issuer import Issuer
+from Actors.Student import Student
+from Actors.Verifier import Verifier
+from Blockchain.DIDRegistry import DIDRegistry
+from Blockchain.RevocationRegistry import RevocationRegistry
+from Blockchain.Blockchain import Blockchain
+from OtherTechnologies.MerkleTree import MerkleTree
+from Utils.CredentialUtils import CredentialUtils
 
 
-class ErasmusSystemOrchestrator:
-    """Orchestra il flusso di emissione, ricezione e verifica delle credenziali Erasmus."""
+def main():
 
-    def __init__(self):
-        self.did_manager = EnhancedDIDManager()
-        self.revocation_registry = EnhancedRevocationRegistry()
-        self.hybrid_crypto = HybridCrypto()
-        self.csprng = CSPRNGGenerator()
+    blockchain = Blockchain()
+    print("✅CREAZIONE DELLA BLOCKCHAIN SIMULATA (con PoW) AVVENUTA CON SUCCESSO")
+    did_registry = DIDRegistry(blockchain)
+    print("✅CREAZIONE DEL REGISTRO PER IL SALVATAGGIO DEI DID AVVENUTA CON SUCCESSO")
+    revocation_registry = RevocationRegistry(blockchain)
+    print("✅CREAZIONE DEL REGISTRO PER LA REVOCA AVVENUTA CON SUCCESSO")
+    print("=" * 50)
 
-        self.host_university = Issuer(self.did_manager, self.revocation_registry, self.hybrid_crypto)
-        self.home_university = Verifier(self.did_manager, self.hybrid_crypto, self.revocation_registry)
-        self.student = Holder(self.did_manager, self.hybrid_crypto, self.csprng)
+    issuer = Issuer(did_registry, revocation_registry)
+    print("✅CREAZIONE DELL'ISSUER AVVENUTA CON SUCCESSO")
+    did_issuer = issuer.get_did()
+    doc_issuer = issuer.get_did_document()
+    print(f"did: {did_issuer}")
+    print(f"did_document: {json.dumps(doc_issuer, indent=4)}")
+    print("=" * 50)
 
-    def setup_entities(self):
-        print("\n--- INIZIALIZZAZIONE DEL SISTEMA ERASMUS ---")
-        self.host_university.generate_keys_and_did("Université de Rennes")
-        self.home_university.generate_keys_and_did("Università di Salerno")
-        self.student.generate_keys_and_did("Mario Rossi")
-        print("-------------------------------------------\n")
+    student = Student(did_registry, revocation_registry)
+    print("✅CREAZIONE DELLO STUDENTE AVVENUTA CON SUCCESSO")
+    did_student = student.get_did()
+    doc_student = student.get_did_document()
+    print(f"did: {did_student}")
+    print(f"did_document: {json.dumps(doc_student, indent=4)}")
+    print("=" * 50)
 
-    def create_detailed_student_data(self) -> Dict[str, Any]:
-        return {
-            "studentInfo": {
-                "name": "Mario",
-                "surname": "Rossi",
-                "studentId": "0512345678",
-                "birthdate": "1999-03-15",
-                "nationality": "Italian",
-                "email": "m.rossi@studenti.unisa.it",
-                "degreeCourse": "Ingegneria Informatica",
-                "academicYear": "2024-2025",
-                "homeUniversity": {
-                    "name": "Università di Salerno",
-                    "code": "UNISA",
-                    "country": "Italy",
-                    "did": self.home_university.did
-                }
-            },
-            "erasmusInfo": {
-                "hostUniversity": {
-                    "name": "Université de Rennes",
-                    "code": "UR1",
-                    "country": "France",
-                    "did": self.host_university.did
-                },
-                "erasmusStartDate": "2024-09-01",
-                "erasmusEndDate": "2025-01-31",
-                "learningAgreement": {
-                    "period": "Fall 2024",
-                    "courses": [
-                        {
-                            "courseName": "Advanced Algorithms",
-                            "courseCode": "CS501",
-                            "ects": 6,
-                            "status": "passed",
-                            "grade": 28,
-                            "gradeScale": "30",
-                            "honor": False,
-                            "completionDate": "2024-12-15"
-                        },
-                        {
-                            "courseName": "Machine Learning",
-                            "courseCode": "CS502",
-                            "ects": 6,
-                            "status": "passed",
-                            "grade": 30,
-                            "gradeScale": "30",
-                            "honor": True,
-                            "completionDate": "2024-12-20"
-                        }
-                    ],
-                    "totalCredits": 12
-                },
-                "languageCertificates": [
-                    {
-                        "language": "French",
-                        "level": "B2",
-                        "certification": "DELF",
-                        "score": 85,
-                        "date": "2024-08-15"
-                    }
-                ]
-            }
-        }
+    verifier = Verifier(did_registry, revocation_registry)
+    print("✅CREAZIONE DEL VERIFIER AVVENUTA CON SUCCESSO")
+    did_verifier = verifier.get_did()
+    doc_verifier = verifier.get_did_document()
+    print(f"did: {did_verifier}")
+    print(f"did_document: {json.dumps(doc_verifier, indent=4)}")
+    print("=" * 50)
 
-    def simulate_full_flow(self):
-        print("\n=== INIZIO SIMULAZIONE COMPLETA DEL SISTEMA ERASMUS ===")
+    accreditation_authority = AccreditationAuthority(did_registry, revocation_registry)
+    print("✅CREAZIONE DELL'ENTE DI ACCREDITAMENTO AVVENUTA CON SUCCESSO")
+    did_accreditation = accreditation_authority.get_did()
+    doc_accreditation = accreditation_authority.get_did_document()
+    print(f"did: {did_accreditation}")
+    print(f"did_document: {json.dumps(doc_accreditation, indent=4)}")
+    print("=" * 50)
 
-        self.setup_entities()
+    print("Accreditamento in corso dell'Issuer...")
+    certificate_issuer = accreditation_authority.generate_accreditation_certificate(did_issuer)
+    print("✅CERTIFICAZIONE DELL'ISSUER AVVENUTA CON SUCCESSO")
+    print(f"Certificate jwt:{certificate_issuer[:60]}...")
+    print("=" * 50)
 
-        student_data_full = self.create_detailed_student_data()
+    print("Accreditamento in corso del Verifier...")
+    certificate_verifier = accreditation_authority.generate_accreditation_certificate(did_verifier)
+    print("✅CERTIFICAZIONE DEL VERIFIER AVVENUTA CON SUCCESSO")
+    print(f"Certificate jwt:{certificate_verifier[:60]}...")
+    print("=" * 50)
 
-        print("\n--- FASE 1: EMISSIONE DELLA VERIFIABLE CREDENTIAL ---")
-        vc_jwt = self.host_university.issue_verifiable_credential(self.student.did, student_data_full)
-        if not vc_jwt:
-            print("Simulazione interrotta: Emissione VC fallita.")
-            return
+    did_registry.save_did(did_student, doc_student)
+    did_registry.save_accredited_did(did_issuer, doc_issuer, certificate_issuer)
+    did_registry.save_accredited_did(did_verifier, doc_verifier, certificate_verifier)
+    did_registry.save_did(did_accreditation, doc_accreditation)
 
-        # MODIFICA: Chiamata corretta al metodo transmit_vc_to_holder
-        print("\n--- FASE 2: TRASMISSIONE SICURA VC DALL'EMITTENTE ALLO STUDENTE ---")
-        encrypted_vc_package = self.host_university.transmit_vc_to_holder(vc_jwt, student_data_full, self.student.public_key)
-        if not encrypted_vc_package:
-            print("Simulazione interrotta: Trasmissione VC cifrata fallita.")
-            return
+    print(f"DID in salvataggio. Transazioni in sospeso: {len(blockchain.pending_transactions)}")
+    print("=" * 50)
+    print("Mining del blocco per le registrazioni DID ...")
+    blockchain.mine_pending_transactions(mining_reward_address="univer_miner_1")
+    print("=" * 50)
 
-        print("\n--- FASE 3: RICEZIONE E VERIFICA VC DA PARTE DELLO STUDENTE ---")
-        vc_verified = self.student.receive_and_verify_vc(
-            encrypted_vc_package,
-            self.host_university.public_key,
-            self.revocation_registry
-        )
-        if not vc_verified:
-            print("Simulazione interrotta: Verifica VC da parte dello studente fallita.")
-            return
+    old_doc_issuer = doc_issuer
+    old_doc_verifier = doc_verifier
+    old_doc_accreditation = doc_accreditation
+    old_doc_student = doc_student
 
-        print("\n--- FASE 4: CONSERVAZIONE NEL WALLET DELLO STUDENTE ---")
-        self.student.demonstrate_credential_storage()
+    doc_issuer = did_registry.get_did_document(did_issuer)
+    if doc_issuer == old_doc_issuer:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
+    else:
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
+    doc_student = did_registry.get_did_document(did_student)
+    if doc_student == old_doc_student:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
+    else:
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
+    doc_verifier = did_registry.get_did_document(did_verifier)
+    if doc_verifier == old_doc_verifier:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
+    else:
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
+    doc_accreditation = did_registry.get_did_document(did_accreditation)
+    if doc_accreditation == old_doc_accreditation:
+        print("✅SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER AVVENUTO CON SUCCESSO")
+    else:
+        print("SALVATAGGIO SULLA BLOCKCHAIN DEL DOCUMENT DELL'ISSUER FALLITO")
+    print("=" * 50)
 
-        print("\n--- FASE 5: CREAZIONE VERIFIABLE PRESENTATION ---")
-        selected_attributes = self.student.select_attributes_for_vp()
-        if not selected_attributes:
-            print("Simulazione interrotta: Nessun attributo selezionato per la VP.")
-            return
+    print("Caricamento dati Mock per Simulazione ...")
+    data = CredentialUtils.load_mock_student_data()
+    print(json.dumps(data, indent=4))
+    print("=" * 50)
 
-        vp_jwt = self.student.create_verifiable_presentation(
-            selected_attributes, self.host_university.public_key
-        )
-        if not vp_jwt:
-            print("Simulazione interrotta: Creazione VP fallita.")
-            return
+    print("Creazione MerkleTree e calcolo Merkle Root...")
+    merkle_tree = MerkleTree(data)
+    print("✅CREAZIONE MERKLE TREE AVVENUTA CON SUCCESSO")
+    merkle_root = merkle_tree.get_merkle_root()
+    print("merkle root: ", merkle_root)
+    print("=" * 50)
 
-        print("\n--- FASE 6: TRASMISSIONE SICURA VP ALL'UNIVERSITÀ DI ORIGINE ---")
-        encrypted_vp_package = self.student.transmit_vp_to_verifier(
-            vp_jwt, self.home_university.public_key
-        )
-        if not encrypted_vp_package:
-            print("Simulazione interrotta: Trasmissione VP cifrata fallita.")
-            return
+    print("Creazione della Verifiable Credential da parte dell'Issuer ...")
+    verifiable_credential = issuer.create_verifiable_credential(did_student, did_accreditation, merkle_root)
+    print(f"✅CREAZIONE VC AVVENUTA CON SUCCESSO:  {verifiable_credential[:60]}...")
+    print("=" * 50)
 
-        print("\n--- FASE 7: VERIFICA VP DA PARTE DELL'UNIVERSITÀ DI ORIGINE ---")
-        vp_is_valid = self.home_university.verify_verifiable_presentation(encrypted_vp_package)
-        if vp_is_valid:
-            print("\n🎉 SIMULAZIONE COMPLETATA CON SUCCESSO! 🎉")
-        else:
-            print("\n❌ SIMULAZIONE FALLITA: La Verifiable Presentation non è stata verificata.")
+    message = {
+        "vc": verifiable_credential,
+        "data": data
+    }
+
+    message_json = json.dumps(message, indent=4)
+    message_json = message_json.encode('utf-8')
+
+    print("Trasmissione della credenziale allo Studente...")
+    encrypted_data = issuer.transmit(did_student, message_json)
+    print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
+    print("=" * 50)
+
+    print("Processo di verifica in Corso...")
+    result, disclosed_attributes, vc_jwt = student.verify_credential(encrypted_data, "")
+    if result == False or disclosed_attributes is None or vc_jwt is None:
+        print("Verifica non superata")
+        return
+
+    print(f"Informazioni ricevute: {json.dumps(disclosed_attributes, indent=4)}" )
+    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt[:60]}...")
+    print("=" * 50)
+
+    print("Salvataggio nella DApp in corso...")
+    student.store_credential_in_dapp(disclosed_attributes, vc_jwt)
+    print("✅SALVATAGGIO AVVENUTO CON SUCCESSO")
+    print("=" * 50)
+
+    print("Processo di Selezione in corso...")
+    vp, disclosed_attributes= student.create_verifiable_presentation(vc_jwt, did_verifier)
+    print("✅SELEZIONE COMPLETATA CON SUCCESSO")
+    print("=" * 50)
+
+    print(f"Informazioni selezionate: {json.dumps(disclosed_attributes, indent=4)}")
+    print(f"Verifiable Presentation in jwt creata: {vp[:60]}...")
+    print("=" * 50)
+
+    print("Trasmissione della credenziale al Verifier...")
+    encrypted_data = student.transmit(did_verifier, vp)
+    print("✅TRASMISSIONE VC AVVENUTA CON SUCCESSO")
+    print("=" * 50)
+
+    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data)
+    if result == False or disclosed_attributes is None or vp_jwt is None:
+        print("Verifica non superata")
+        return
+    print(f"Informazioni ricevute: {json.dumps(disclosed_attributes, indent=4)}")
+    print(f"Verifiable Credential in jwt ricevuta: {vc_jwt[:60]}...")
+    print("=" * 50)
+
 
 if __name__ == "__main__":
-    orchestrator = ErasmusSystemOrchestrator()
-    orchestrator.simulate_full_flow()
+    main()
