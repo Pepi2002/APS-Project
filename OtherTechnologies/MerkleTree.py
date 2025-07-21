@@ -4,6 +4,8 @@ from typing import Dict, Any, List, Tuple, Optional
 
 
 class MerkleTree:
+    """Classe utilizzata per la creazione e l'utilizzo del merkle tree"""
+
     def __init__(self, data: Dict[str, Any]):
         """
         Inizializza l'albero Merkle costruendo le foglie e l'intero albero.

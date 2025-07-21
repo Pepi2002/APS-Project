@@ -6,7 +6,7 @@ import jwt
 from Actors.Actor import Actor
 from Blockchain.DIDRegistry import DIDRegistry
 from Blockchain.RevocationRegistry import RevocationRegistry
-from OtherTechnologies.NumberGenerator import CSPRNGGenerator
+from OtherTechnologies.CSPRNGGenerator import CSPRNGGenerator
 from OtherTechnologies.MerkleTree import MerkleTree
 from OtherTechnologies.StudentDApp import StudentDApp
 from Utils.CredentialUtils import CredentialUtils

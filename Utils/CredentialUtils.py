@@ -6,6 +6,8 @@ import jwt
 
 
 class CredentialUtils:
+    """Classe Utils per la creazione di credenziali"""
+
     @staticmethod
     def load_mock_student_data() -> Dict:
         """Mock di dati accademici dettagliati dello studente (non firmati)"""

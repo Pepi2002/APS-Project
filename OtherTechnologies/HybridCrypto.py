@@ -2,10 +2,12 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from OtherTechnologies.NumberGenerator import CSPRNGGenerator
+from OtherTechnologies.CSPRNGGenerator import CSPRNGGenerator
 
 
 class HybridCrypto:
+    """Classe che simula la crittografia ibrida"""
+
     def __init__(self):
         self.number_gen = CSPRNGGenerator() #Generatore di numeri casuali
 

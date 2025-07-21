@@ -1,6 +1,7 @@
 import secrets
 
 class CSPRNGGenerator:
+    """Classe che simula il generatore di numeri casuali"""
 
     @staticmethod
     def generate_key_material(length: int) -> bytes:
@@ -26,4 +27,4 @@ class CSPRNGGenerator:
         Genera una chiave simmetrica da usare per la crittografia ibrida
         :return: la chiave simmetrica
         """
-        return secrets.token_bytes(32)  # 256 bits
+        return secrets.token_bytes(32)
