@@ -1,4 +1,5 @@
 import json
+import time
 
 from Actors.AccreditationAuthority import AccreditationAuthority
 from Actors.Issuer import Issuer
@@ -127,6 +128,10 @@ def main():
     print(f"✅CREAZIONE VC AVVENUTA CON SUCCESSO:  {verifiable_credential[:60]}...")
     print("=" * 50)
 
+    # Misura la dimensione in byte della VC
+    vc_size = len(verifiable_credential.encode('utf-8'))
+    print(f"VC size (bytes): {vc_size}")
+
     message = {
         "vc": verifiable_credential,
         "data": data
@@ -141,7 +146,10 @@ def main():
     print("=" * 50)
 
     print("Processo di verifica in Corso...")
+    start = time.time()
     result, disclosed_attributes, vc_jwt1 = student.verify_credential(encrypted_data_vc)
+    end = time.time()
+    print(f"VC verification latency (seconds): {end - start:.6f}")
     if result == False or disclosed_attributes is None or vc_jwt1 is None:
         print("Verifica non superata")
         return
@@ -160,6 +168,10 @@ def main():
     print("✅SELEZIONE COMPLETATA CON SUCCESSO")
     print("=" * 50)
 
+    # Misura la dimensione in byte della VP
+    vp_size = len(vp.encode('utf-8'))
+    print(f"VP size (bytes): {vp_size}")
+
     print(f"Informazioni selezionate: {json.dumps(disclosed_attributes, indent=4)}")
     print(f"Verifiable Presentation in jwt creata: {vp[:60]}...")
     print("=" * 50)
@@ -170,7 +182,10 @@ def main():
     print("=" * 50)
 
     print("Processo di verifica in Corso...")
+    start = time.time()
     result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp)
+    end = time.time()
+    print(f"VP verification latency (seconds): {end - start:.6f}")
     if result == False or disclosed_attributes is None or vp_jwt is None:
         print("Verifica non superata")
         return
@@ -179,7 +194,10 @@ def main():
     print("=" * 50)
 
     print("Simulazione Replay Attack...")
+    start = time.time()
     result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp)
+    end = time.time()
+    print(f"VP verification latency (seconds): {end - start:.6f}")
     if result == False or disclosed_attributes is None or vp_jwt is None:
         print("Verifica non superata")
     print("=" * 50)
@@ -193,14 +211,20 @@ def main():
     print("=" * 50)
 
     print("Nuova Verifica della Verifiable Credential...")
+    start = time.time()
     result, disclosed_attributes, vc_jwt2 = student.verify_credential(encrypted_data_vc)
+    end = time.time()
+    print(f"VC verification latency (seconds): {end - start:.6f}")
     if result == False or disclosed_attributes is None or vc_jwt2 is None:
         print("Verifica non superata")
 
     print("Nuova Verifica della Verifiable Presentation...")
     vp2, _ = student.create_verifiable_presentation(vc_jwt1, did_verifier)
     encrypted_data_vp2 = student.transmit(did_verifier, vp2)
+    start = time.time()
     result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp2)
+    end = time.time()
+    print(f"VP verification latency (seconds): {end - start:.6f}")
     if result == False or disclosed_attributes is None or vp_jwt is None:
         print("Verifica non superata")
     print("=" * 50)
