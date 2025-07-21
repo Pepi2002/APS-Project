@@ -64,7 +64,6 @@ class Actor:
             "authentication": [f"{self.did}#key-1"],
             "assertionMethod": [f"{self.did}#key-1"],
             "created": datetime.now().isoformat(),
-            "updated": datetime.now().isoformat(),
         }
 
     def get_did(self) -> str:
