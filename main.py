@@ -178,6 +178,12 @@ def main():
     print(f"Verifiable Credential in jwt ricevuta: {vc_jwt1[:60]}...")
     print("=" * 50)
 
+    print("Simulazione Replay Attack...")
+    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp)
+    if result == False or disclosed_attributes is None or vp_jwt is None:
+        print("Verifica non superata")
+    print("=" * 50)
+
     print("Simulazione di Revoca...")
     issuer.revoke_credential(vc_jwt1)
     print(f"Revoca in esecuzione. Transazioni in sospeso: {len(blockchain.pending_transactions)}")
@@ -199,11 +205,6 @@ def main():
         print("Verifica non superata")
     print("=" * 50)
 
-    print("Simulazione Replay Attack...")
-    result, disclosed_attributes, vp_jwt = verifier.verify_presentation(encrypted_data_vp2)
-    if result == False or disclosed_attributes is None or vp_jwt is None:
-        print("Verifica non superata")
-    print("=" * 50)
 
 
 if __name__ == "__main__":

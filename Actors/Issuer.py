@@ -7,6 +7,8 @@ from Utils.CredentialUtils import CredentialUtils
 
 
 class Issuer(Actor):
+    """Classe che simula il mittente della Verifiable Credential"""
+
     def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
         super().__init__(did_registry, revocation_registry)
 
@@ -39,18 +41,21 @@ class Issuer(Actor):
 
     def transmit(self, recipient_did: str, message: bytes) -> bytes:
         """
-            Trasmette un messaggio cifrato al destinatario usando il suo DID per ottenere la chiave pubblica.
-
-            :param recipient_did: DID del destinatario
-            :param message: messaggio in bytes da cifrare e inviare
-            """
+        Trasmette un messaggio cifrato al destinatario usando il suo DID per ottenere la chiave pubblica.
+        :param recipient_did: DID del destinatario
+        :param message: messaggio in bytes da cifrare e inviare
+        """
+        #Ottiene la chiave pubblica del destinatario
         try:
             recipient_pubkey_pem = self.did_registry.get_public_key(recipient_did)
         except Exception as e:
             print(f"Errore risoluzione DID {recipient_did}: {e}")
             return
 
+        #Cifra il messaggio da inviare tramite crittografia ibrida
         encrypted_message = self.hybrid_crypto.encrypt(message, recipient_pubkey_pem)
+
+        #Simula l'invio del messaggio
         print(f"Invio messaggio cifrato a {recipient_did}:\n{encrypted_message.hex()[:60]}...")
         return encrypted_message
 
@@ -66,14 +71,19 @@ class Issuer(Actor):
 
             # Decodifica senza verifica della firma
             payload = jwt.decode(vc_jwt, options={"verify_signature": False})
+
+            #Ottiene l'id della credenziale
             credential_id = payload.get("jti")
 
+            #Controlla che l'id sia valido
             if not credential_id:
                 print("❌Campo 'jti' mancante nella VC, impossibile revocare.")
                 return False
 
+            #Richiede la revoca della credenziale
             success = self.revocation_registry.revoke_credential(credential_id)
 
+            #Controlla che la revoca sia avvenuta con successo
             if success:
                 print("✅Revoca avvenuta con successo.")
             else:

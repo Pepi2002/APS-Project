@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import datetime
 from typing import Dict
@@ -12,10 +11,12 @@ from OtherTechnologies.HybridCrypto import HybridCrypto
 
 
 class Actor:
+    """Classe che simula Attore generico"""
+
     def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
         self.private_key = self.generate_private_key()
         self.public_key = self.private_key.public_key()
-        self.did = self.generate_did()
+        self.did = f"did:{uuid.uuid4()}"
         self.did_document = self.generate_did_document()
         self.hybrid_crypto = HybridCrypto()
         self.did_registry = did_registry
@@ -28,12 +29,6 @@ class Actor:
             public_exponent=65537,
             key_size=2048,
         )
-
-    def get_private_key(self):
-        return self.private_key
-
-    def get_public_key(self):
-        return self.public_key
 
     def get_private_key_pem(self) -> bytes:
         """Restituisce la chiave privata in formato PEM (bytes)."""
@@ -50,12 +45,12 @@ class Actor:
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
 
-    @staticmethod
-    def generate_did():
-        return f"did:{uuid.uuid4()}"
-
 
     def generate_did_document(self) -> Dict:
+        """
+        Genera un did document
+        :return: did document generato
+        """
         pem_lines = self.get_public_key_pem().decode('utf-8').splitlines()
         return {
             "@context": ["https://www.w3.org/ns/did/v1"],
@@ -73,7 +68,15 @@ class Actor:
         }
 
     def get_did(self) -> str:
+        """
+        Metodo per ottenere il did di un attore
+        :return: did di un attore
+        """
         return self.did
 
     def get_did_document(self) -> Dict:
+        """
+        Metodo per ottenere il did document di un attore
+        :return: il did document di un attore
+        """
         return self.did_document
