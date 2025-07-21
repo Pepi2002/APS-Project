@@ -8,6 +8,7 @@ from Blockchain.DIDRegistry import DIDRegistry
 from Blockchain.RevocationRegistry import RevocationRegistry
 from Blockchain.Blockchain import Blockchain
 from OtherTechnologies.MerkleTree import MerkleTree
+from OtherTechnologies.StudentDApp import StudentDApp
 from Utils.CredentialUtils import CredentialUtils
 
 
@@ -19,6 +20,8 @@ def main():
     print("✅CREAZIONE DEL REGISTRO PER IL SALVATAGGIO DEI DID AVVENUTA CON SUCCESSO")
     revocation_registry = RevocationRegistry(blockchain)
     print("✅CREAZIONE DEL REGISTRO PER LA REVOCA AVVENUTA CON SUCCESSO")
+    student_dapp = StudentDApp()
+    print("✅CREAZIONE DELLA DAPP PER LO STUDENTE AVVENUTA CON SUCCESSO")
     print("=" * 50)
 
     issuer = Issuer(did_registry, revocation_registry)
@@ -29,7 +32,7 @@ def main():
     print(f"did_document: {json.dumps(doc_issuer, indent=4)}")
     print("=" * 50)
 
-    student = Student(did_registry, revocation_registry)
+    student = Student(did_registry, revocation_registry, student_dapp)
     print("✅CREAZIONE DELLO STUDENTE AVVENUTA CON SUCCESSO")
     did_student = student.get_did()
     doc_student = student.get_did_document()

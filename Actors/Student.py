@@ -13,9 +13,9 @@ from Utils.CredentialUtils import CredentialUtils
 
 
 class Student(Actor):
-    def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry):
+    def __init__(self, did_registry: DIDRegistry, revocation_registry: RevocationRegistry, student_dapp: StudentDApp):
         super().__init__(did_registry, revocation_registry)
-        self.student_dapp = StudentDApp()
+        self.student_dapp = student_dapp
 
 
     def decrypting_package(self, encrypted_package: bytes):
